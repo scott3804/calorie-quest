@@ -52,6 +52,7 @@ export interface PlayerProfile {
   settings: {
     weightUnit: WeightUnit;
     language: string; // "en"
+    theme: "light" | "dark" | "retro";
   };
 
   // The Science

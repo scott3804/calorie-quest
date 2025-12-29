@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { type Gender, type WeightUnit } from "../../types";
 
 export interface GoalData {

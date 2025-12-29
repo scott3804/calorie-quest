@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { AppearanceSelector } from "./AppearanceSelector";
 import { GoalSetter, type GoalData } from "./GoalSetter";
 import {
@@ -50,7 +50,7 @@ export const OnboardingWizard = () => {
       },
       targetCalories: targetCalories,
       targetWater: 8,
-      settings: { weightUnit: unit, language: "en", theme: "retro" },
+      settings: { weightUnit: unit, language: "en", theme: "dark" },
     };
 
     await setDoc(doc(db, "users", auth.currentUser.uid), newProfile);

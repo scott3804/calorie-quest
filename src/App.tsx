@@ -39,7 +39,7 @@ function App() {
   }
 
   // 3. If user exists but has no profile, start Onboarding
-  if (user && !profile) {
+  if (!profile) {
     return <OnboardingWizard />;
   }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { PaperDoll } from "../Character/PaperDoll";
 import { type Appearance, type WeightUnit } from "../../types";
 
