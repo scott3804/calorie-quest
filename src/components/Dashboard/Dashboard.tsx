@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { type FoodEntry, type PlayerProfile } from "../../types";
 import { PaperDoll } from "../Character/PaperDoll";
-import { Home, BarChart2, Plus, Map, ShoppingBag } from "lucide-react";
+import { Home, BarChart2, Plus, Map, ShoppingBag, Loader2 } from "lucide-react";
 import { AddEntryDrawer } from "./AddEntryDrawer";
 import { useDailyLog } from "../../hooks/useDailyLog";
+import { logFoodToDb, logWaterToDb } from "../../utils/db";
 
 interface Props {
   profile: PlayerProfile;
@@ -11,18 +12,26 @@ interface Props {
 
 export const Dashboard = ({ profile }: Props) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // This is our live data stream from Firestore
   const { calories, water, loading: logLoading } = useDailyLog(profile.uid);
 
-  // Logic for adding water
-  const handleAddWater = (amount: number) => {
-    setWaterConsumed((prev) => prev + amount);
-    // We will add the Firebase 'doc update' here later
+  // Corrected Handlers: They talk to the DB, not local state
+  const handleAddWater = async (amount: number) => {
+    try {
+      await logWaterToDb(profile.uid, amount);
+    } catch (err) {
+      console.error("Failed to log water:", err);
+    }
   };
 
-  // Logic for adding food
-  const handleAddFood = (food: FoodEntry) => {
-    setCaloriesConsumed((prev) => prev + food.calories);
-    setIsAddOpen(false); // Close the drawer after adding
+  const handleAddFood = async (food: FoodEntry) => {
+    try {
+      await logFoodToDb(profile.uid, food);
+      setIsAddOpen(false);
+    } catch (err) {
+      console.error("Failed to log food:", err);
+    }
   };
 
   const caloriePercent = Math.min(
@@ -33,7 +42,6 @@ export const Dashboard = ({ profile }: Props) => {
     (water / (profile.targetWater || 8)) * 100,
     100
   );
-
   return (
     <>
       <div className="min-h-screen bg-slate-900 text-white flex flex-col font-sans overflow-hidden">
@@ -56,6 +64,12 @@ export const Dashboard = ({ profile }: Props) => {
 
         {/* MAIN GAME AREA: The Room */}
         <main className="flex-1 relative flex items-center justify-center p-6 bg-gradient-to-b from-slate-900 to-slate-800">
+          {/* Global Loading Overlay for initial data fetch */}
+          {logLoading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+              <Loader2 className="animate-spin text-blue-500" size={48} />
+            </div>
+          )}
           {/* The Room Backdrop (Placeholder for slots) */}
           <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
             <div className="w-full h-full border-b-[50px] border-slate-700" />
