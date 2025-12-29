@@ -1,35 +1,54 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useAuth } from "./hooks/useAuth";
+import { OnboardingWizard } from "./components/Onboarding/OnboardingWizard";
+import { Dashboard } from "./components/Dashboard/Dashboard"; // We'll build the HUD version next
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { user, profile, loading } = useAuth();
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+  // 1. Show a loading spinner or splash screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    );
+  }
+
+  // 2. If no user is logged in, show Login (we'll build a simple Google button for this)
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
+        <h1 className="text-4xl font-black text-slate-900 mb-8">
+          CalorieQuest
+        </h1>
+        <button
+          onClick={() => {
+            /* We will add signInWithGoogle here */
+          }}
+          className="bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-sm font-bold flex items-center gap-3 hover:bg-slate-50 transition-colors"
+        >
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg"
+            width="20"
+            alt="Google"
+          />
+          Sign in with Google
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    );
+  }
+
+  // 3. If user exists but has no profile, start Onboarding
+  if (user && !profile) {
+    return <OnboardingWizard />;
+  }
+
+  // 4. Returning user with a profile goes to the HUD
+  return (
+    <div className="App">
+      <Dashboard profile={profile} />
+    </div>
+  );
 }
 
-export default App
+export default App;
