@@ -2,6 +2,10 @@ export type Gender = "male" | "female" | "non-binary";
 
 export type WeightUnit = "lbs" | "kg";
 
+export type WaterUnit = "oz" | "ml";
+
+export type ThemeOptions = "light" | "dark" | "retro";
+
 export interface Appearance {
   skinColor: string;
   hairColor: string;
@@ -17,10 +21,15 @@ export interface WeightEntry {
   weight: number;
 }
 
+export interface InventoryItem {
+  id: string;
+  quantity: number;
+}
+
 export interface PlayerInventory {
-  clothes: string[];
-  hairstyles: string[]; // Unlocked styles
-  furniture: string[];
+  clothes: string[]; // Just IDs
+  hairstyles: string[]; // Just IDs
+  furniture: InventoryItem[]; // Tracks how many you own total
   homes: string[];
   accessories: string[];
 }
@@ -36,6 +45,9 @@ export interface PlayerProfile {
   xp: number;
   gold: number;
   currentStreak: number;
+  title: string;
+  achievements: string[];
+  tutorialStep: number;
 
   // Customization
   gender: Gender;
@@ -45,30 +57,65 @@ export interface PlayerProfile {
   inventory: PlayerInventory;
   currentHome: string;
   homeLayout: {
-    slots: Record<number, string>; // Slot ID -> Item ID
+    slots: Record<number, string>;
   };
 
-  //   Settings
+  // Settings
   settings: {
     weightUnit: WeightUnit;
-    language: string; // "en"
-    theme: "light" | "dark" | "retro";
+    waterUnit: WaterUnit;
+    language: string;
+    theme: ThemeOptions;
   };
 
-  // The Science
+  // The Science (Updated)
   stats: {
+    age: number;
+    height: number;
     startingWeight: number;
     targetWeight: number;
-    weightHistory: WeightEntry[]; // Pruned as discussed
+    weightHistory: WeightEntry[];
+    totalWorkouts: number;
+    totalWaterLogs: number;
     totalQuestsCompleted: number;
   };
-  targetCalories: number;
-  targetWater: number; // default to 8
-}
 
+  targetCalories: number;
+  targetWater: number;
+}
 export interface FoodEntry {
   id: string;
   name: string;
   calories: number;
-  timestamp: number;
+  timestamp: string; // Changed from number to string
+  isFavorite?: boolean; // Added optional flag
+}
+
+export interface ExerciseEntry {
+  id: string;
+  name: string;
+  duration: number;
+  timestamp: string;
+}
+
+export interface WaterEntry {
+  id: string;
+  amount: number;
+  timestamp: string;
+}
+
+export interface DailyLog {
+  date: string;
+  totalCalories: number;
+  totalWater: number;
+  totalExerciseMinutes: number;
+  isArchived: boolean;
+  foods?: FoodEntry[];
+  exercises?: ExerciseEntry[];
+  waterEntries?: WaterEntry[];
+  xpEarnedToday: {
+    food: number; // 0 to 1000
+    water: number; // 0 to 800
+    exercise: number; // 0 to 1200
+  };
 }

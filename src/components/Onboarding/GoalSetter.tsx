@@ -1,133 +1,210 @@
 import { useState } from "react";
-import { type Gender, type WeightUnit } from "../../types";
+import {
+  type Gender,
+  type ThemeOptions,
+  type WeightUnit,
+  type WaterUnit,
+} from "../../types";
 
 export interface GoalData {
   age: number;
-  height: number; // store in cm
-  weight: number; // store in kg
-  targetWeight: number; // store in kg
+  height: number;
+  weight: number;
+  targetWeight: number;
   gender: Gender;
 }
 
 interface Props {
-  unit: WeightUnit;
-  onComplete: (goals: GoalData, targetCalories: number) => void;
-  onBack: () => void;
+  initialUnit: WeightUnit;
+  initialWaterUnit: WaterUnit;
+  initialForm: GoalData; // The "Source of Truth" for existing stats
+  initialCalories: number;
+  initialWater: number;
+  onComplete: (
+    goals: GoalData,
+    kcal: number,
+    water: number,
+    unit: WeightUnit,
+    wUnit: WaterUnit
+  ) => void;
+  onBack: (currentForm: GoalData) => void;
+  theme: ThemeOptions;
 }
 
-export const GoalSetter = ({ unit, onComplete, onBack }: Props) => {
-  const [form, setForm] = useState({
-    age: 25,
-    height: unit === "lbs" ? 70 : 175, // inches vs cm
-    weight: unit === "lbs" ? 180 : 80,
-    targetWeight: unit === "lbs" ? 170 : 75,
-    gender: "female" as Gender,
-  });
+export const GoalSetter = ({
+  initialUnit,
+  initialWaterUnit,
+  initialForm,
+  initialCalories, // Use this
+  initialWater, // Use this
+  onComplete,
+  onBack,
+  theme,
+}: Props) => {
+  const [unit, setUnit] = useState<WeightUnit>(initialUnit);
+  const [waterUnit, setWaterUnit] = useState<WaterUnit>(initialWaterUnit);
+  const [form, setForm] = useState<GoalData>(initialForm);
 
-  const calculateSuggestedCalories = () => {
-    // Convert to Metric for math if needed
-    const w = unit === "lbs" ? form.weight / 2.2 : form.weight;
-    const h = unit === "lbs" ? form.height * 2.54 : form.height;
+  // Initialize with the passed values to persist manual overrides
+  const [manualWater, setManualWater] = useState<number | null>(
+    initialWater || null
+  );
+  const [manualCalories, setManualCalories] = useState<number | null>(
+    initialCalories || null
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const calculateSuggestedWater = () => {
+    const weightInKg = unit === "lbs" ? form.weight / 2.204 : form.weight;
+    let ml = weightInKg * 33;
+    if (form.gender === "male") ml += 500;
 
-    // Mifflin-St Jeor BMR
-    const bmr =
-      10 * w + 6.25 * h - 5 * form.age + (form.gender === "male" ? 5 : -161);
-    const tdee = Math.round(bmr * 1.2); // Sedentary multiplier
-    return tdee - 500; // Standard 1lb/week loss deficit
+    const suggestedMl = Math.round(ml);
+    return waterUnit === "ml" ? suggestedMl : Math.round(suggestedMl / 29.57);
   };
 
-  const suggested = calculateSuggestedCalories();
+  const calculateSuggestedCalories = () => {
+    const w = unit === "lbs" ? form.weight / 2.204 : form.weight;
+    const h = unit === "lbs" ? form.height * 2.54 : form.height;
+    // Using the "Neutral Middle" offset of -78 for Non-Binary
+    const genderOffset =
+      form.gender === "male" ? 5 : form.gender === "female" ? -161 : -78;
+    const bmr = 10 * w + 6.25 * h - 5 * form.age + genderOffset;
+    return Math.round(bmr * 1.2) - 500;
+  };
+
+  const finalWater = manualWater ?? calculateSuggestedWater();
+  const finalCalories = manualCalories ?? calculateSuggestedCalories();
+
+  const submitForm = () => {
+    setIsSaving(true);
+    const finalData: GoalData = {
+      ...form,
+      height: unit === "lbs" ? form.height * 2.54 : form.height,
+      weight: unit === "lbs" ? form.weight / 2.204 : form.weight,
+      targetWeight:
+        unit === "lbs" ? form.targetWeight / 2.204 : form.targetWeight,
+    };
+    onComplete(finalData, finalCalories, finalWater, unit, waterUnit);
+  };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 p-6">
-      <button
-        onClick={onBack}
-        className="text-slate-400 text-sm mb-4 font-bold"
-      >
-        ← BACK TO STYLE
-      </button>
-      <h2 className="text-2xl font-black text-slate-800 mb-6">The Science</h2>
+    <div
+      className={`h-screen overflow-y-auto bg-[var(--bg-main)] p-6 pb-24 flex flex-col items-center ${
+        theme === "retro" ? "retro-screen-filter" : ""
+      }`}
+    >
+      <div className="w-full max-w-md">
+        {/* Back button now triggers onBack while persisting current form */}
+        <button
+          onClick={() => onBack(form)}
+          className="text-[var(--text-primary)] opacity-40 text-sm mb-4 font-bold uppercase tracking-widest hover:opacity-100 transition-opacity"
+        >
+          ← Back
+        </button>
 
-      <div className="space-y-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
-            Gender for calculation
-          </label>
-          <div className="flex gap-2">
-            {["female", "male"].map((g) => (
-              <button
-                key={g}
-                onClick={() => setForm({ ...form, gender: g as Gender })}
-                className={`flex-1 py-2 rounded-xl font-bold border-2 transition-all ${
-                  form.gender === g
-                    ? "border-blue-500 bg-blue-50 text-blue-600"
-                    : "border-slate-100 text-slate-400"
-                }`}
-              >
-                {g.toUpperCase()}
-              </button>
-            ))}
+        <h2 className="text-2xl font-black text-[var(--text-primary)] mb-6">
+          The Science
+        </h2>
+
+        <div className="space-y-6 bg-[var(--bg-card)] p-6 rounded-3xl shadow-xl border border-black/5">
+          {/* Identity Picker */}
+          <div>
+            <label className="block text-[10px] font-black opacity-40 uppercase mb-2 text-[var(--text-primary)] tracking-widest text-center">
+              Identity
+            </label>
+            <div className="flex gap-2 bg-black/5 p-1 rounded-xl">
+              {(["male", "female", "non-binary"] as Gender[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setForm({ ...form, gender: g })}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all uppercase ${
+                    form.gender === g
+                      ? "bg-[var(--bg-main)] shadow text-blue-500"
+                      : "opacity-40 text-[var(--text-primary)]"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Age"
-            value={form.age}
-            onChange={(v) => setForm({ ...form, age: parseInt(v) })}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Age"
+              value={form.age}
+              onChange={(v) => setForm({ ...form, age: parseInt(v) || 0 })}
+            />
+            <Input
+              label={`Water Goal (${waterUnit})`}
+              value={finalWater}
+              onChange={(v) => setManualWater(parseInt(v) || 0)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <UnitToggle
+              label="Mass"
+              options={["lbs", "kg"]}
+              active={unit}
+              onSelect={(u) => setUnit(u as WeightUnit)}
+            />
+            <UnitToggle
+              label="Fluid"
+              options={["oz", "ml"]}
+              active={waterUnit}
+              onSelect={(u) => setWaterUnit(u as WaterUnit)}
+            />
+          </div>
+
           <Input
             label={`Height (${unit === "lbs" ? "in" : "cm"})`}
             value={form.height}
-            onChange={(v) => setForm({ ...form, height: parseInt(v) })}
+            onChange={(v) => setForm({ ...form, height: parseFloat(v) || 0 })}
           />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={`Current (${unit})`}
+              value={form.weight}
+              onChange={(v) => setForm({ ...form, weight: parseFloat(v) || 0 })}
+            />
+            <Input
+              label={`Target (${unit})`}
+              value={form.targetWeight}
+              onChange={(v) =>
+                setForm({ ...form, targetWeight: parseFloat(v) || 0 })
+              }
+            />
+          </div>
         </div>
 
-        <Input
-          label={`Current Weight (${unit})`}
-          value={form.weight}
-          onChange={(v) => setForm({ ...form, weight: parseInt(v) })}
-        />
-        <Input
-          label={`Target Weight (${unit})`}
-          value={form.targetWeight}
-          onChange={(v) => setForm({ ...form, targetWeight: parseInt(v) })}
-        />
-      </div>
-
-      <div className="mt-8 p-6 bg-blue-600 rounded-3xl text-white shadow-xl">
-        <p className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-1">
-          Daily Quest Goal
-        </p>
-        <h3 className="text-4xl font-black mb-2">{suggested} kcal</h3>
-        <p className="text-sm text-blue-100 opacity-80">
-          This is your recommended intake to lose weight safely.
-        </p>
-        {suggested < 1200 && (
-          <p className="mt-3 p-2 bg-red-500/30 rounded-lg text-xs font-bold border border-red-400">
-            ⚠️ WARNING: This target is very low. Consult a doctor before
-            starting.
+        {/* Calorie Card */}
+        <div className="mt-8 p-6 bg-blue-600 rounded-3xl text-white shadow-xl">
+          <p className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-1">
+            Daily Food Goal
           </p>
-        )}
-      </div>
+          <div className="flex items-baseline gap-2">
+            <input
+              type="number"
+              value={finalCalories}
+              onChange={(e) => setManualCalories(parseInt(e.target.value) || 0)}
+              className="bg-transparent text-4xl font-black w-32 outline-none border-b-2 border-blue-400 focus:border-white transition-colors"
+            />
+            <span className="text-xl font-bold opacity-80">kcal</span>
+          </div>
+        </div>
 
-      <button
-        onClick={() => {
-          // Convert everything to the "Golden Units" (kg/cm) for DB storage
-          const finalData = {
-            age: form.age,
-            height: unit === "lbs" ? form.height * 2.54 : form.height,
-            weight: unit === "lbs" ? form.weight / 2.204 : form.weight,
-            targetWeight:
-              unit === "lbs" ? form.targetWeight / 2.204 : form.targetWeight,
-            gender: form.gender,
-          };
-          onComplete(finalData, suggested);
-        }}
-        className="mt-6 w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-transform"
-      >
-        Finalize Hero
-      </button>
+        <button
+          onClick={submitForm}
+          disabled={isSaving}
+          style={{ backgroundColor: "var(--accent)", color: "var(--bg-main)" }}
+          className="mt-6 w-full py-4 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all"
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </button>
+      </div>
     </div>
   );
 };
@@ -141,15 +218,50 @@ const Input = ({
   value: number;
   onChange: (v: string) => void;
 }) => (
-  <div>
-    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+  <div className="flex flex-col gap-1 text-center">
+    <label className="text-[10px] font-black uppercase opacity-60 tracking-wider text-[var(--text-primary)]">
       {label}
     </label>
     <input
       type="number"
-      value={value}
+      // Change this to Math.round to eliminate the ".1" decimal creep
+      value={Math.round(value)}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-slate-50 border-2 border-slate-100 p-3 rounded-xl font-bold focus:border-blue-500 outline-none"
+      className="w-full border-2 border-black/10 p-3 rounded-2xl font-bold outline-none text-[var(--text-primary)] bg-black/5 text-center"
     />
+  </div>
+);
+
+const UnitToggle = ({
+  label,
+  options,
+  active,
+  onSelect,
+}: {
+  label: string;
+  options: string[];
+  active: string;
+  onSelect: (v: string) => void;
+}) => (
+  <div className="flex flex-col gap-1">
+    <label className="text-[10px] font-black opacity-40 uppercase tracking-widest text-center text-[var(--text-primary)]">
+      {label}
+    </label>
+    <div className="flex bg-black/5 p-1 rounded-xl">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onSelect(o)}
+          className={`flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${
+            active === o
+              ? "bg-[var(--bg-main)] shadow text-blue-500"
+              : "opacity-40 text-[var(--text-primary)]"
+          }`}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
   </div>
 );

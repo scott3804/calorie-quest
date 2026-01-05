@@ -1,81 +1,147 @@
 @import "tailwindcss";
 
+/* 1. Define Variables Correctly */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --text-primary: #0f172a;
+  --accent: #3b82f6;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+[data-theme="dark"] {
+  --bg-main: #020617;
+  --bg-card: #1e293b;
+  --text-primary: #f8fafc;
+  --accent: #60a5fa;
 }
 
+[data-theme="retro"] {
+  --bg-main: #8c926b; /* A bit deeper olive */
+  --bg-card: #7a805e; /* A bit deeper shadow */
+  --text-primary: #2d311d; /* Deep dark charcoal-green */
+  --accent: #43492a;
+}
+* {
+  transition: background-color 0.4s steps(4), color 0.2s linear;
+}
+
+/* Specific Retro styling for buttons */
+[data-theme="retro"] button {
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--text-primary) !important;
+}
+
+[data-theme="retro"] button:active {
+  box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 0.2);
+  transform: translate(2px, 2px);
+}
+
+[data-theme="retro"] .retro-screen-filter {
+  filter: contrast(0.7) brightness(1.1); /* Adding a touch of brightness helps the greens pop */
+}
+
+[data-theme="retro"] .nav-text {
+  /* Gives a slight "indented" or "embossed" look common in old LCDs */
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.1);
+  font-weight: 900;
+}
+
+[data-theme="retro"] .log-option-button {
+  border: 2px solid var(--text-primary) !important;
+  background-color: rgba(0, 0, 0, 0.05); /* Very subtle neutral tint */
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="retro"] .log-option-button:active {
+  box-shadow: 0px 0px 0px rgba(0, 0, 0, 0);
+  transform: translate(2px, 2px);
+}
+
+[data-theme="retro"] .stamina-bar-container {
+  border: 2px solid var(--text-primary);
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* Make the bar look like a segmented LCD bar */
+[data-theme="retro"] .stamina-fill {
+  background: var(
+    --text-primary
+  ); /* Use the dark green for the fill in retro */
+  filter: contrast(1.5);
+  background-image: linear-gradient(
+    90deg,
+    transparent 90%,
+    rgba(0, 0, 0, 0.3) 90%
+  );
+  background-size: 10% 100%; /* Creates a segmented 'block' effect */
+}
+
+/* Standard shine behavior */
+.orb-shine {
+  transition: all 0.3s ease;
+  filter: blur(3px);
+}
+
+/* Retro theme override */
+[data-theme="retro"] .orb-shine {
+  opacity: 0.75;
+  filter: blur(2px);
+}
+
+.boss-ready-banner {
+  box-shadow: 0 0 15px var(--accent);
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+  animation: bounce 2s infinite;
+}
+
+[data-theme="retro"] svg {
+  /* This ensures all new lucide-react icons feel blocky */
+  shape-rendering: crispedges;
+  vector-effect: non-scaling-stroke;
+}
+
+/* 2. Reset Body and Layout */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
   min-height: 100vh;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  /* This ensures our theme transitions look smooth */
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: system-ui, sans-serif;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#root {
+  width: 100%;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* 3. Global Input Fix */
+input {
+  color: var(--text-primary);
 }
 
+/* 4. Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5); /* slate-800 */
+  background: rgba(30, 41, 59, 0.1);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #3b82f6; /* blue-500 */
+  background: var(--accent);
   border-radius: 10px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+[data-theme="retro"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* Very subtle scanlines/pixel grid */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: 50;
 }

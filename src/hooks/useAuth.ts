@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "../firebase";
-// import { doc, getDoc, setDoc } from "firebase/firestore";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore"; // Use onSnapshot
 import { onAuthStateChanged, type User } from "firebase/auth";
 import type { PlayerProfile } from "../types";
 
@@ -11,29 +10,34 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
-        const docRef = doc(db, "users", firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as PlayerProfile);
-        } else {
-          // We return null for profile if it doesn't exist yet
-          // This triggers the OnboardingWizard in App.tsx
-          setProfile(null);
-        }
-        setUser(firebaseUser);
-      } else {
-        setUser(null);
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      // If there's no user, we know immediately there's no profile to load
+      if (!firebaseUser) {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribeProfile = onSnapshot(
+      doc(db, "users", user.uid),
+      (docSnap) => {
+        setProfile(docSnap.exists() ? (docSnap.data() as PlayerProfile) : null);
+        setLoading(false); // Definitive end of the loading state
+      },
+      (error) => {
+        console.error("Profile listener error:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribeProfile();
+  }, [user]);
 
   return { user, profile, loading };
 };

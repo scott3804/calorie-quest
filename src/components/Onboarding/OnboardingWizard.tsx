@@ -1,33 +1,64 @@
 import { useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { db, auth } from "../../firebase";
 import { AppearanceSelector } from "./AppearanceSelector";
 import { GoalSetter, type GoalData } from "./GoalSetter";
 import {
   type Appearance,
-  type WeightUnit,
+  type ThemeOptions,
   type PlayerProfile,
+  type WeightUnit,
+  type WaterUnit,
 } from "../../types";
-import { db, auth } from "../../firebase";
-import { doc, setDoc } from "firebase/firestore";
 
 export const OnboardingWizard = () => {
   const [step, setStep] = useState(1);
-  const [appearance, setAppearance] = useState<Appearance | null>(null);
-  const [unit, setUnit] = useState<WeightUnit>("lbs");
+  const [theme, setTheme] = useState<ThemeOptions>("light");
 
-  const handleFinalize = async (goals: GoalData, targetCalories: number) => {
-    if (!auth.currentUser || !appearance) return;
+  const [appearance, setAppearance] = useState<Appearance>({
+    skinColor: "#f3d9c1",
+    hairColor: "#4a2c2a",
+    eyeColor: "#2d5a27",
+    hairStyle: "default_bob",
+    currentOutfit: "starter_tunic",
+    currentHat: null,
+    currentAccessory: null,
+  });
+
+  const [goalForm, setGoalForm] = useState<GoalData>({
+    age: 25,
+    height: 70,
+    weight: 180,
+    targetWeight: 170,
+    gender: "female",
+  });
+
+  const handleFinalize = async (
+    goals: GoalData, // This contains your 39 age and 75 height
+    kcal: number,
+    water: number,
+    wUnit: WeightUnit,
+    fluidUnit: WaterUnit
+  ) => {
+    if (!auth.currentUser) return;
 
     const newProfile: PlayerProfile = {
-      version: "1.0.0",
+      version: "1.1.0",
       uid: auth.currentUser.uid,
       displayName: auth.currentUser.displayName || "Hero",
       isPremium: false,
+
       level: 1,
       xp: 0,
-      gold: 100,
+      gold: 0,
       currentStreak: 0,
-      gender: goals.gender,
-      appearance: appearance,
+      title: "Recruit",
+      achievements: [],
+      tutorialStep: 0,
+
+      gender: goals.gender, // Use goals param
+      appearance: appearance, // Use appearance state
+
       inventory: {
         clothes: ["starter_tunic"],
         hairstyles: [appearance.hairStyle],
@@ -37,7 +68,18 @@ export const OnboardingWizard = () => {
       },
       currentHome: "studio",
       homeLayout: { slots: {} },
+
+      settings: {
+        weightUnit: wUnit,
+        waterUnit: fluidUnit,
+        language: "en",
+        theme: theme,
+      },
+
       stats: {
+        // FIX: Use 'goals' properties, NOT 'goalForm' state
+        age: goals.age,
+        height: goals.height,
         startingWeight: goals.weight,
         targetWeight: goals.targetWeight,
         weightHistory: [
@@ -46,32 +88,49 @@ export const OnboardingWizard = () => {
             weight: goals.weight,
           },
         ],
+        totalWorkouts: 0,
+        totalWaterLogs: 0,
         totalQuestsCompleted: 0,
       },
-      targetCalories: targetCalories,
-      targetWater: 8,
-      settings: { weightUnit: unit, language: "en", theme: "dark" },
+
+      targetCalories: kcal,
+      targetWater: water,
     };
 
-    await setDoc(doc(db, "users", auth.currentUser.uid), newProfile);
-    window.location.reload(); // Quickest way to refresh the useAuth state
+    try {
+      await setDoc(doc(db, "users", auth.currentUser.uid), newProfile);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save hero profile.");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-main)]">
       {step === 1 && (
         <AppearanceSelector
+          initialAppearance={appearance}
+          initialTheme={theme}
           onSave={(res) => {
             setAppearance(res.appearance);
-            setUnit(res.unit);
+            setTheme(res.theme);
             setStep(2);
           }}
         />
       )}
       {step === 2 && (
         <GoalSetter
-          unit={unit}
-          onBack={() => setStep(1)}
+          initialForm={goalForm}
+          initialUnit="lbs"
+          initialWaterUnit="oz"
+          initialCalories={0}
+          initialWater={0}
+          theme={theme}
+          onBack={(form) => {
+            setGoalForm(form);
+            setStep(1);
+          }}
           onComplete={handleFinalize}
         />
       )}
