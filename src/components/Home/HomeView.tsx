@@ -18,13 +18,21 @@ export const HomeView = ({ profile }: Props) => {
     loading: logLoading,
   } = useDailyLog(profile.uid, today);
 
+  const isOz = profile.settings.waterUnit === "oz";
+
+  // Convert DB ml to display oz if necessary
+  const displayWater = isOz ? Math.round(water / 29.57) : water;
+  const displayTargetWater = isOz
+    ? Math.round(profile.targetWater / 29.57)
+    : profile.targetWater;
+
   // Percent Calculations
   const caloriePercent = Math.min(
     (calories / profile.targetCalories) * 100,
     100
   );
   const waterPercent = Math.min(
-    (water / (profile.targetWater || 8)) * 100,
+    (displayWater / (displayTargetWater || 1)) * 100,
     100
   );
   const staminaPercent = Math.round(
@@ -83,7 +91,15 @@ export const HomeView = ({ profile }: Props) => {
       {/* Removing absolute positioning here makes it stay pinned above the Nav */}
       <div className="px-6 pb-8 pt-4 flex items-end justify-between gap-4 bg-transparent z-20">
         {/* Health Orb */}
-        <Orb fillPercent={caloriePercent} color="bg-red-500" label="KCAL" />
+        <div className="flex flex-col items-center gap-2">
+          <Orb fillPercent={caloriePercent} color="bg-red-500" label="Health" />
+          <div className="text-center">
+            <p className="text-xs font-black text-[var(--text-primary)]">
+              {calories} / {profile.targetCalories}{" "}
+              <span className="opacity-40 uppercase text-[8px]">kcal</span>
+            </p>
+          </div>
+        </div>
 
         {/* Boss Indicator / Center Stamina Area */}
         <div className="flex-1 flex flex-col items-center gap-2 pointer-events-auto">
@@ -122,7 +138,17 @@ export const HomeView = ({ profile }: Props) => {
         </div>
 
         {/* Mana Orb */}
-        <Orb fillPercent={waterPercent} color="bg-blue-600" label="H2O" />
+        <div className="flex flex-col items-center gap-2">
+          <Orb fillPercent={waterPercent} color="bg-blue-600" label="Mana" />
+          <div className="text-center">
+            <p className="text-xs font-black text-[var(--text-primary)]">
+              {displayWater} / {displayTargetWater}{" "}
+              <span className="opacity-40 uppercase text-[8px]">
+                {profile.settings.waterUnit}
+              </span>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

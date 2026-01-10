@@ -77,14 +77,28 @@ export const GoalSetter = ({
 
   const submitForm = () => {
     setIsSaving(true);
-    const finalData: GoalData = {
+
+    // 1. Normalize the weight and height stats to kg/cm
+    const normalizedGoals: GoalData = {
       ...form,
       height: unit === "lbs" ? form.height * 2.54 : form.height,
-      weight: unit === "lbs" ? form.weight / 2.204 : form.weight,
+      weight: unit === "lbs" ? form.weight / 2.20462 : form.weight,
       targetWeight:
-        unit === "lbs" ? form.targetWeight / 2.204 : form.targetWeight,
+        unit === "lbs" ? form.targetWeight / 2.20462 : form.targetWeight,
     };
-    onComplete(finalData, finalCalories, finalWater, unit, waterUnit);
+
+    // 2. Normalize the manual/suggested water goal to ml
+    const normalizedWater =
+      waterUnit === "oz" ? Math.round(finalWater * 29.57) : finalWater;
+
+    // 3. Pass the normalized data up
+    onComplete(
+      normalizedGoals,
+      finalCalories,
+      normalizedWater,
+      unit,
+      waterUnit
+    );
   };
 
   return (

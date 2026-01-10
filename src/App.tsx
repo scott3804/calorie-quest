@@ -8,7 +8,12 @@ import { HomeView } from "./components/Home/HomeView";
 import AppHeader from "./components/Layout/AppHeader";
 import { BottomNav } from "./components/Layout/BottomNav";
 import { AddEntryDrawer } from "./components/Layout/AddEntryDrawer";
-import { logExerciseToDb, logFoodToDb, logWaterToDb } from "./utils/db";
+import {
+  logExerciseToDb,
+  logFoodToDb,
+  logWaterToDb,
+  logWeightToDb,
+} from "./utils/db";
 import type { FoodEntry, WaterUnit } from "./types";
 import { QuestView } from "./components/Quests/QuestsView";
 import { ShopView } from "./components/Shop/ShopView";
@@ -107,10 +112,10 @@ function App() {
     }
   };
 
-  const handleAddFood = async (food: FoodEntry) => {
+  const handleAddFood = async (food: FoodEntry, countsAsHydration: boolean) => {
     try {
       await logFoodToDb(profile.uid, food);
-      setIsAddOpen(false);
+      if (!countsAsHydration) setIsAddOpen(false);
     } catch (err) {
       console.error("Failed to log food:", err);
     }
@@ -125,25 +130,38 @@ function App() {
     }
   };
 
+  const handleAddWeight = async (weight: number, unit: "lbs" | "kg") => {
+    try {
+      await logWeightToDb(profile.uid, weight, unit);
+      // You might want to show a toast or notification here
+    } catch (err) {
+      console.error("Failed to log weight:", err);
+    }
+  };
+
   // --- MAIN APP NAVIGATION ---
   return (
-    <div className="h-screen w-screen flex flex-col bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden">
-      {/* PERSISTENT HEADER */}
+    /* Use h-[100dvh] to handle mobile browser bars and navigation accurately */
+    <div className="h-[100dvh] w-screen flex flex-col bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden">
+      {/* PERSISTENT HEADER stays at the top */}
       <AppHeader profile={profile} />
-      {/* DYNAMIC CONTENT AREA */}
+
+      {/* DYNAMIC CONTENT AREA - flex-1 ensures it takes all space between header and footer */}
       <main className="flex-1 overflow-y-auto custom-scrollbar bg-transparent">
         {currentView === "home" && <HomeView profile={profile} />}
         {currentView === "stats" && <StatsPage profile={profile} />}
         {currentView === "quest" && <QuestView />}
         {currentView === "shop" && <ShopView />}
       </main>
-      {/* PERSISTENT BOTTOM NAV */}
+
+      {/* PERSISTENT BOTTOM NAV stays at the bottom */}
       <BottomNav
         activeTab={currentView}
         onNavigate={setCurrentView}
         onAddClick={() => setIsAddOpen(true)}
       />
-      {/* PERSISTENT DRAWERS */}
+
+      {/* PERSISTENT DRAWERS - These sit on top of everything else */}
       <AddEntryDrawer
         isOpen={isAddOpen}
         uid={profile.uid}
@@ -151,6 +169,7 @@ function App() {
         onAddWater={handleAddWater}
         onAddFood={handleAddFood}
         onAddExercise={handleAddExercise}
+        onAddWeight={handleAddWeight}
         theme={profile.settings.theme}
       />
     </div>

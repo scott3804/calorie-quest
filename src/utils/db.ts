@@ -99,6 +99,30 @@ export const logExerciseToDb = async (
 };
 
 /**
+ * LOGS WEIGHT
+ * Normalizes to KG and appends to stats.weightHistory in the profile.
+ */
+export const logWeightToDb = async (
+  uid: string,
+  weight: number,
+  unit: "lbs" | "kg"
+) => {
+  const userRef = doc(db, "users", uid);
+
+  // Normalize to KG for storage
+  const weightInKg = unit === "lbs" ? weight / 2.20462 : weight;
+
+  const newEntry = {
+    date: getLocalTodayString(),
+    weight: weightInKg,
+  };
+
+  await updateDoc(userRef, {
+    "stats.weightHistory": arrayUnion(newEntry),
+  });
+};
+
+/**
  * FOOD LIBRARY HELPERS
  */
 export const saveCustomFoodDefinition = async (

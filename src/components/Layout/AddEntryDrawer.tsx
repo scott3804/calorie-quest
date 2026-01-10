@@ -10,7 +10,6 @@ import {
   Dumbbell,
   Star,
   Search,
-  Plus,
 } from "lucide-react";
 import type { FoodEntry, ThemeOptions, WaterUnit } from "../../types";
 import { useFoodLibrary } from "../../hooks/useFoodLibrary";
@@ -25,8 +24,9 @@ interface Props {
   uid: string;
   onClose: () => void;
   onAddWater: (amount: number, unit: WaterUnit) => void;
-  onAddFood: (food: FoodEntry) => void;
+  onAddFood: (food: FoodEntry, countsAsHydration: boolean) => void;
   onAddExercise: (activity: string, minutes: number) => void;
+  onAddWeight: (weight: number, unit: "lbs" | "kg") => void;
   theme: ThemeOptions;
 }
 
@@ -37,6 +37,7 @@ export const AddEntryDrawer = ({
   onAddWater,
   onAddFood,
   onAddExercise,
+  onAddWeight,
   theme,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<
@@ -57,10 +58,16 @@ export const AddEntryDrawer = ({
   // Local state for the custom food form
   const [customFoodName, setCustomFoodName] = useState("");
   const [customFoodKcal, setCustomFoodKcal] = useState("");
+  const [countsAsHydration, setCountsAsHydration] = useState(false);
+  const [isLiquidDefault, setIsLiquidDefault] = useState(false);
 
   // State for the selected activity and duration
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const [exerciseTime, setExerciseTime] = useState("30");
+
+  // State for weight logging
+  const [weightValue, setWeightValue] = useState("");
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs"); // Default to lbs
 
   // Assuming you use a hook like useFoodLibrary(uid)
   const { foodLibrary, favorites } = useFoodLibrary(uid);
@@ -78,6 +85,7 @@ export const AddEntryDrawer = ({
         setCustomFoodKcal("");
         setSelectedFood(null);
         setFoodQuantity(1);
+        setSelectedActivity(null);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -139,6 +147,7 @@ export const AddEntryDrawer = ({
   const handleFoodClick = (food: FoodEntry) => {
     setSelectedFood(food);
     setFoodQuantity(1);
+    setCountsAsHydration(false);
     setReturnTab("food");
     setActiveTab("foodQuantity");
   };
@@ -146,11 +155,16 @@ export const AddEntryDrawer = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 backdrop-blur-sm">
+      {/* Overlay stays simple */}
       <div className="absolute inset-0" onClick={onClose} />
 
-      {/* Main Drawer Container */}
-      <div className="relative w-full max-w-md bg-[var(--bg-card)] rounded-t-[2.5rem] p-8 pt-12 shadow-2xl border-t-4 border-black/10 animate-in slide-in-from-bottom duration-300">
+      {/* Main Drawer Container: No more 'animate-in' or 'slide-in' */}
+      <div
+        className="relative w-full max-w-md bg-[var(--bg-card)] rounded-t-[2.5rem] 
+                    p-8 pt-12 shadow-2xl border-t-4 border-black/10 
+                    max-h-[92dvh] overflow-y-auto pb-safe"
+      >
         {/* Close Button - Moved slightly up/right to clear the options */}
         <button
           onClick={onClose}
@@ -286,12 +300,13 @@ export const AddEntryDrawer = ({
               {/* If search returns nothing, show the 'Register New' button */}
               {filteredFoods.length === 0 && (
                 <button
-                  onClick={() => setActiveTab("customFood")}
-                  className="w-full p-6 border-2 border-dashed border-black/10 rounded-2xl text-center opacity-60 hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    setCustomFoodName(search);
+                    setActiveTab("customFood");
+                  }}
+                  className="w-full p-6 border-2 border-dashed ..."
                 >
-                  <p className="text-sm font-bold uppercase tracking-tighter text-[var(--text-primary)]">
-                    + Register New Fuel
-                  </p>
+                  + Register "{search}" as New Fuel
                 </button>
               )}
             </div>
@@ -318,6 +333,17 @@ export const AddEntryDrawer = ({
               value={customFoodKcal}
               onChange={(e) => setCustomFoodKcal(e.target.value)}
             />
+
+            <label className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isLiquidDefault} // New state variable
+                onChange={(e) => setIsLiquidDefault(e.target.checked)}
+              />
+              <span className="text-xs font-bold text-blue-600 uppercase">
+                Always count as hydration
+              </span>
+            </label>
 
             <div className="grid grid-cols-1 gap-2 mt-4">
               {/* Option 1: Log only */}
@@ -429,21 +455,46 @@ export const AddEntryDrawer = ({
               </button>
             </div>
 
+            <label className="flex items-center gap-3 p-4 bg-blue-500/5 rounded-2xl border-2 border-blue-500/20 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={countsAsHydration}
+                onChange={(e) => setCountsAsHydration(e.target.checked)}
+                className="w-5 h-5 accent-blue-500"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-black text-blue-600 uppercase">
+                  Liquid Fuel
+                </p>
+                <p className="text-[10px] font-bold opacity-60 uppercase">
+                  Count this as hydration?
+                </p>
+              </div>
+            </label>
+
             {/* Final Consume Button */}
             <button
               onClick={() => {
                 // Ensure we don't log 0 or NaN quantity
                 const finalQuantity = foodQuantity || 1;
 
-                onAddFood({
-                  ...selectedFood,
-                  id: `${selectedFood.id}-${Date.now()}-${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`,
-                  calories: Math.round(selectedFood.calories * finalQuantity),
-                  timestamp: new Date().toISOString(),
-                });
-                onClose();
+                onAddFood(
+                  {
+                    ...selectedFood,
+                    id: `${selectedFood.id}-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .substr(2, 9)}`,
+                    calories: Math.round(selectedFood.calories * finalQuantity),
+                    timestamp: new Date().toISOString(),
+                  },
+                  countsAsHydration
+                );
+
+                if (countsAsHydration) {
+                  setActiveTab("water"); // Immediately pop up the water entry
+                } else {
+                  onClose();
+                }
               }}
               // Disable if quantity is effectively zero
               disabled={!foodQuantity || foodQuantity <= 0}
@@ -525,7 +576,59 @@ export const AddEntryDrawer = ({
               </div>
             )}
           </div>
-        )}{" "}
+        )}
+        {activeTab === "weight" && (
+          <div className="space-y-6 animate-in slide-in-from-right duration-200">
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="p-4 bg-green-500 rounded-2xl text-white shadow-lg shadow-green-500/20 mb-2">
+                <Scale size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tighter text-[var(--text-primary)]">
+                Hero Weight
+              </h3>
+            </div>
+
+            <div className="bg-black/5 p-6 rounded-[2rem] border border-[var(--text-primary)]/10">
+              <div className="flex gap-4 items-end justify-center mb-6">
+                <div className="flex flex-col items-center">
+                  <input
+                    autoFocus
+                    type="number"
+                    value={weightValue}
+                    onChange={(e) => setWeightValue(e.target.value)}
+                    placeholder="0.0"
+                    className="bg-transparent text-5xl font-black text-center w-32 outline-none border-b-4 border-black/10 focus:border-green-500 text-[var(--text-primary)] transition-colors"
+                  />
+                  <span className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">
+                    Current Weight
+                  </span>
+                </div>
+
+                {/* Unit Toggle */}
+                <button
+                  onClick={() =>
+                    setWeightUnit(weightUnit === "lbs" ? "kg" : "lbs")
+                  }
+                  className="bg-[var(--bg-main)] px-4 py-2 rounded-xl font-black text-sm uppercase border-2 border-[var(--text-primary)]/10 text-green-600 active:scale-95"
+                >
+                  {weightUnit}
+                </button>
+              </div>
+
+              <button
+                disabled={!weightValue || parseFloat(weightValue) <= 0}
+                onClick={async () => {
+                  // This calls the prop we will add in App.tsx
+                  await onAddWeight(parseFloat(weightValue), weightUnit);
+                  onClose();
+                }}
+                className="w-full py-4 bg-green-500 text-white rounded-2xl font-black uppercase shadow-lg shadow-green-500/20 active:scale-95 transition-all disabled:opacity-30"
+              >
+                Record Progress
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -648,37 +751,44 @@ const WaterTab = ({
 
   const presets = [
     { label: "Glass", oz: 8, ml: 250 },
+    { label: "Large", oz: 12, ml: 350 },
+    { label: "Tall", oz: 16, ml: 475 },
     { label: "Bottle", oz: 20, ml: 600 },
     { label: "The Jug", oz: 32, ml: 1000 },
+    { label: "The Tank", oz: 40, ml: 1200 },
   ];
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right duration-200">
-      {/* 1. PRESET BUTTONS */}
-      <div className="grid grid-cols-1 gap-3">
+    <div className="space-y-4 animate-in slide-in-from-right duration-200">
+      {/* 1. COMPACT HEADER: Centralized Icon */}
+      <div className="flex flex-col items-center justify-center py-2">
+        <div className="p-3 bg-blue-500 rounded-2xl text-white shadow-lg shadow-blue-500/20 mb-1">
+          <Droplets size={24} />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest opacity-40 text-[var(--text-primary)]">
+          Hydration Presets
+        </p>
+      </div>
+
+      {/* 2. PRESET GRID: Space-optimized buttons */}
+      <div className="grid grid-cols-2 gap-2">
         {presets.map((p) => (
           <button
             key={p.label}
             onClick={() => onAdd(unit === "oz" ? p.oz : p.ml, unit)}
-            className="flex justify-between items-center p-4 bg-blue-500/10 border-2 border-blue-500/20 rounded-2xl active:scale-95 transition-all group hover:border-blue-500"
+            className="flex flex-col items-center justify-center py-3 bg-blue-500/10 border-2 border-blue-500/10 rounded-xl active:scale-95 transition-all group hover:border-blue-500/50"
           >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg text-white">
-                <Droplets size={20} />
-              </div>
-              <div className="text-left">
-                <p className="font-black text-sm uppercase">{p.label}</p>
-                <p className="text-[10px] font-bold opacity-50 uppercase tracking-tighter">
-                  {p.oz} oz / {p.ml} ml
-                </p>
-              </div>
-            </div>
-            <Plus className="opacity-30 group-hover:opacity-100" />
+            <p className="font-black text-xs uppercase text-[var(--text-primary)] leading-none mb-1">
+              {p.label}
+            </p>
+            <p className="text-[10px] font-bold opacity-50 uppercase text-[var(--text-primary)]">
+              {p.oz} oz / {p.ml} ml
+            </p>
           </button>
         ))}
       </div>
 
-      {/* 2. CUSTOM INPUT */}
+      {/* 3. CUSTOM INPUT */}
       <div className="bg-black/5 p-4 rounded-3xl border border-[var(--text-primary)]/10">
         <label className="text-[10px] font-black opacity-40 uppercase mb-2 block text-[var(--text-primary)]">
           Custom Amount
@@ -689,13 +799,11 @@ const WaterTab = ({
             value={customValue}
             onChange={(e) => setCustomValue(e.target.value)}
             placeholder={`Enter ${unit}...`}
-            /* Added min-w-0 to prevent flex-pushing */
-            className="min-w-0 flex-1 bg-black/10 p-4 rounded-xl font-bold outline-none border-2 border-transparent focus:border-blue-500 transition-all text-[var(--text-primary)]"
+            className="min-w-0 flex-1 bg-black/10 p-3 rounded-xl font-bold outline-none border-2 border-transparent focus:border-blue-500 transition-all text-[var(--text-primary)]"
           />
           <button
             onClick={() => setUnit(unit === "oz" ? "ml" : "oz")}
-            /* Changed to a fixed width to keep it consistent */
-            className="w-16 bg-[var(--bg-main)] text-[var(--text-primary)] rounded-xl font-black text-xs uppercase border-2 border-[var(--text-primary)]/10 active:scale-95 transition-transform shrink-0"
+            className="w-14 bg-[var(--bg-main)] text-[var(--text-primary)] rounded-xl font-black text-xs uppercase border-2 border-[var(--text-primary)]/10 active:scale-95 shrink-0"
           >
             {unit}
           </button>
@@ -706,7 +814,7 @@ const WaterTab = ({
             onAdd(Number(customValue), unit);
             setCustomValue("");
           }}
-          className="w-full mt-3 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-sm disabled:opacity-30 active:scale-[0.98] transition-all shadow-lg shadow-blue-500/20"
+          className="w-full mt-3 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-sm disabled:opacity-30 active:scale-[0.98] transition-all shadow-lg"
         >
           Add Custom
         </button>
