@@ -89,7 +89,7 @@ export interface FoodEntry {
   calories: number;
   timestamp: string; // Changed from number to string
   isFavorite?: boolean; // Added optional flag
-  countsAsHydration?: boolean; //Optional flag for a food to also count as hydration (Coffee, Tea, etc.)
+  isLiquid?: boolean; //Optional flag for a food to also count as hydration (Coffee, Tea, etc.)
 }
 
 export interface ExerciseEntry {

@@ -87,28 +87,35 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
           </header>
 
           {/* --- QUICK SUMMARY DASHBOARD --- */}
-          <section className="flex gap-4 overflow-x-auto pb-4 no-scrollbar justify-between bg-black/5 rounded-[2.5rem] p-6 border-2 border-black/5">
-            <GoalDonut
-              current={log?.totalCalories || 0}
-              target={profile.targetCalories}
-              label="Fuel"
-              unit="kcal"
-              color="#ef4444" // Red for Fuel
-            />
-            <GoalDonut
-              current={displayTotalWater}
-              target={displayTargetWater}
-              label="Mana"
-              unit={profile.settings.waterUnit}
-              color="#3b82f6" // Blue for Mana
-            />
-            <GoalDonut
-              current={log?.totalExerciseMinutes || 0}
-              target={30} // Assuming 30m base target
-              label="Stamina"
-              unit="min"
-              color="#eab308" // Yellow for Stamina
-            />
+          <section className="flex gap-2 overflow-x-auto pb-2 no-scrollbar bg-black/5 rounded-[2rem] p-3 border-2 border-black/5">
+            <div className="flex-shrink-0 w-28">
+              <GoalDonut
+                current={log?.totalCalories || 0}
+                target={profile.targetCalories}
+                label="Fuel"
+                unit="kcal"
+                color="#ef4444"
+              />
+            </div>
+            <div className="flex-shrink-0 w-28">
+              <GoalDonut
+                current={displayTotalWater}
+                target={displayTargetWater}
+                label="Mana"
+                unit={profile.settings.waterUnit}
+                color="#3b82f6"
+              />
+            </div>
+            {/* Width set to ensure this chart peeks onto the screen */}
+            <div className="flex-shrink-0 w-28">
+              <GoalDonut
+                current={log?.totalExerciseMinutes || 0}
+                target={30}
+                label="Stamina"
+                unit="min"
+                color="#eab308"
+              />
+            </div>
           </section>
 
           {/* 1. FUEL SECTION (FOOD) */}

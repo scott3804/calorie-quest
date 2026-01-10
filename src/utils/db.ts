@@ -6,6 +6,7 @@ import {
   increment,
   arrayUnion,
   collection,
+  deleteDoc,
 } from "firebase/firestore";
 import {
   type FoodEntry,
@@ -145,4 +146,13 @@ export const updateFoodFavoriteStatus = async (
 ) => {
   const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
   return await updateDoc(foodRef, { isFavorite });
+};
+
+/**
+ * DELETES A FOOD DEFINITION
+ * Removes a food from the user's permanent library.
+ */
+export const deleteFoodFromLibrary = async (uid: string, foodId: string) => {
+  const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
+  await deleteDoc(foodRef); // You'll need to import deleteDoc from firebase/firestore
 };

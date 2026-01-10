@@ -14,6 +14,7 @@ import {
 import type { FoodEntry, ThemeOptions, WaterUnit } from "../../types";
 import { useFoodLibrary } from "../../hooks/useFoodLibrary";
 import {
+  deleteFoodFromLibrary,
   saveCustomFoodDefinition,
   updateFoodFavoriteStatus,
 } from "../../utils/db";
@@ -101,21 +102,25 @@ export const AddEntryDrawer = ({
       calories: Number(customFoodKcal),
       timestamp: getLocalTodayString(),
       isFavorite: type === "favorite",
+      // Pass the hydration default into the temporary entry
+      isLiquid: isLiquidDefault,
     };
 
     try {
-      // If it's a permanent addition, save to the library first
       if (type === "save" || type === "favorite") {
         await saveCustomFoodDefinition(uid, {
           name: newEntry.name,
           calories: newEntry.calories,
           isFavorite: newEntry.isFavorite,
+          // This now saves permanently to your library!
+          isLiquid: isLiquidDefault,
         });
       }
 
-      // Instead of logging and closing, pass it to the quantity step
       setSelectedFood(newEntry);
       setFoodQuantity(1);
+      // Set the quantity-tab checkbox to match your library default
+      setCountsAsHydration(isLiquidDefault);
       setReturnTab("customFood");
       setActiveTab("foodQuantity");
     } catch (err) {
@@ -147,7 +152,7 @@ export const AddEntryDrawer = ({
   const handleFoodClick = (food: FoodEntry) => {
     setSelectedFood(food);
     setFoodQuantity(1);
-    setCountsAsHydration(false);
+    setCountsAsHydration(food.isLiquid || false);
     setReturnTab("food");
     setActiveTab("foodQuantity");
   };
@@ -267,33 +272,60 @@ export const AddEntryDrawer = ({
 
             <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
               {filteredFoods.map((food: FoodEntry) => (
-                <div key={food.id} className="relative group">
+                <div key={food.id} className="relative flex items-center group">
+                  {/* 1. MAIN FOOD BUTTON */}
                   <button
                     onClick={() => handleFoodClick(food)}
-                    className="w-full flex justify-between items-center p-4 bg-black/5 hover:bg-black/10 rounded-2xl border-2 border-transparent active:border-[var(--accent)] transition-all"
+                    className="w-full flex justify-between items-center p-4 pr-24 bg-black/5 hover:bg-black/10 rounded-2xl border-2 border-transparent active:border-[var(--accent)] transition-all"
                   >
                     <div className="text-left">
-                      <p className="font-black text-sm uppercase text-[var(--text-primary)]">
+                      <p className="font-black text-sm uppercase text-[var(--text-primary)] leading-tight">
                         {food.name}
                       </p>
-                      <p className="text-[10px] opacity-40 font-black">
+                      <p className="text-[10px] opacity-40 font-black mt-0.5">
                         {food.calories} KCAL
                       </p>
                     </div>
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(food);
-                    }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 opacity-20 hover:opacity-100"
-                  >
-                    <Star
-                      size={18}
-                      fill={food.isFavorite ? "var(--accent)" : "none"}
-                      className={food.isFavorite ? "text-[var(--accent)]" : ""}
-                    />
-                  </button>
+
+                  {/* 2. ICON ACTIONS CONTAINER (Pinned Right) */}
+                  <div className="absolute right-2 flex items-center gap-1">
+                    {/* FAVORITE STAR */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(food);
+                      }}
+                      className="p-2 opacity-30 hover:opacity-100 transition-opacity"
+                    >
+                      <Star
+                        size={18}
+                        fill={food.isFavorite ? "var(--accent)" : "none"}
+                        className={
+                          food.isFavorite
+                            ? "text-[var(--accent)]"
+                            : "text-[var(--text-primary)]"
+                        }
+                      />
+                    </button>
+
+                    {/* DELETE FROM LIBRARY X */}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (
+                          confirm(
+                            `Remove "${food.name}" from your permanent library?`
+                          )
+                        ) {
+                          await deleteFoodFromLibrary(uid, food.id);
+                        }
+                      }}
+                      className="p-2 text-red-500 opacity-30 hover:opacity-100 transition-opacity"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
               ))}
 
