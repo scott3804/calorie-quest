@@ -78,8 +78,9 @@ export const AddEntryDrawer = ({
 
   // State for weight logging
   const [weightValue, setWeightValue] = useState("");
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs"); // Default to lbs
 
+  // Assuming you use a hook like useFoodLibrary(uid)
   const { foodLibrary, favorites } = useFoodLibrary(uid);
 
   const filteredFoods = foodLibrary.filter((f: FoodDefinition) =>
@@ -96,7 +97,6 @@ export const AddEntryDrawer = ({
         setSelectedFood(null);
         setFoodQuantity(1);
         setSelectedActivity(null);
-        setEditingFoodId("");
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -117,18 +117,21 @@ export const AddEntryDrawer = ({
 
     try {
       if (editingFoodId) {
+        // MODE: Decoupled Edit
         await updateFoodDefinition(uid, editingFoodId, foodData);
         setEditingFoodId("");
-        setActiveTab("food");
-        return;
+        setActiveTab("food"); // Return to search list
+        return; // Exit here; do not proceed to quantity tab
       }
 
+      // MODE: New Item Registration
       let finalFoodId = `temp-${Date.now()}`;
       if (type === "save" || type === "favorite") {
         const res = await saveCustomFoodDefinition(uid, foodData);
         finalFoodId = res.id;
       }
 
+      // Move to quantity tab for new/one-time items
       setSelectedFood({ ...foodData, id: finalFoodId });
       setFoodQuantity(1);
       setCountsAsHydration(isLiquidDefault);
@@ -141,6 +144,8 @@ export const AddEntryDrawer = ({
 
   const toggleFavorite = async (food: FoodDefinition) => {
     try {
+      // We pass the uid from our new prop, the food's unique ID,
+      // and the opposite of its current favorite status.
       await updateFoodFavoriteStatus(uid, food.id, !food.isFavorite);
     } catch (err) {
       console.error("Failed to update favorite status:", err);
@@ -154,8 +159,16 @@ export const AddEntryDrawer = ({
     setCarbs(food.carbs?.toString() || "");
     setFat(food.fat?.toString() || "");
     setIsLiquidDefault(food.isLiquid);
+
+    // Important: We need a way to track that we are editing an existing item
     setEditingFoodId(food.id);
     setActiveTab("customFood");
+  };
+
+  // Wrap the existing handlers to also close the menu
+  const handleExerciseClick = (name: string, minutes: number) => {
+    onAddExercise(name, minutes);
+    onClose();
   };
 
   const handleWaterClick = (amt: number, unit: WaterUnit) => {
@@ -175,32 +188,79 @@ export const AddEntryDrawer = ({
 
   return (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 backdrop-blur-sm">
+      {/* Overlay stays simple */}
       <div className="absolute inset-0" onClick={onClose} />
 
-      {/* Main Container: Flexbox split for Keyboard & Alignment */}
+      {/* Main Drawer Container: No more 'animate-in' or 'slide-in' */}
       <div
         className="relative w-full max-w-md bg-[var(--bg-card)] rounded-t-[2.5rem] 
-                      shadow-2xl border-t-4 border-black/10 
-                      max-h-[92dvh] flex flex-col overflow-hidden"
+                    p-8 pt-12 shadow-2xl border-t-4 border-black/10 
+                    max-h-[92dvh] overflow-y-auto pb-safe"
       >
-        {/* 1. FIXED HEADER: Stays visible above keyboard */}
-        <div className="pt-10 px-8 pb-4 relative shrink-0">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-6 text-[var(--text-primary)] opacity-40 hover:opacity-100 transition-opacity z-50"
-          >
-            <X size={24} />
-          </button>
-
-          {/* Dynamic Header Content */}
-          {activeTab === "options" && (
-            <h3 className="text-2xl font-black text-center uppercase tracking-tighter text-[var(--text-primary)]">
+        {/* Close Button - Moved slightly up/right to clear the options */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-6 text-[var(--text-primary)] opacity-40 hover:opacity-100 transition-opacity z-50"
+        >
+          <X size={24} />
+        </button>
+        {activeTab === "options" && (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-black mb-8 text-center uppercase tracking-tighter text-[var(--text-primary)]">
               Hero's Log
             </h3>
-          )}
-
-          {activeTab === "food" && (
-            <div className="flex items-center gap-4">
+            {/* 2x2 Grid for easier tapping */}
+            <div className="grid grid-cols-2 gap-4">
+              <ActionButton
+                theme={theme}
+                icon={<Utensils size={32} />}
+                label="Food"
+                subLabel="Health Orb"
+                // Red for Food
+                customColor="rgba(239, 68, 68, 0.2)"
+                iconColor="text-red-500"
+                onClick={() => setActiveTab("food")}
+              />
+              <ActionButton
+                theme={theme}
+                icon={<Droplets size={32} />}
+                label="Water"
+                subLabel="Mana Orb"
+                // Blue for Water
+                customColor="rgba(59, 130, 246, 0.2)"
+                iconColor="text-blue-500"
+                onClick={() => setActiveTab("water")}
+              />
+              <ActionButton
+                theme={theme}
+                icon={<Zap size={32} />} // Using Zap for Exercise/Stamina
+                label="Exercise"
+                subLabel="Stamina Bar"
+                // Yellow for Exercise
+                customColor="rgba(234, 179, 8, 0.2)"
+                iconColor="text-yellow-500"
+                onClick={() => setActiveTab("exercise")}
+              />
+              <ActionButton
+                theme={theme}
+                icon={<Scale size={32} />}
+                label="Weight"
+                subLabel="Hero Stats"
+                // Green for Weight/Progress
+                customColor="rgba(34, 197, 94, 0.2)"
+                iconColor="text-green-500"
+                onClick={() => setActiveTab("weight")}
+              />
+            </div>
+          </div>
+        )}
+        {activeTab === "food" && (
+          <div
+            className={`space-y-3 transition-all duration-300 ${
+              search ? "pb-[60vh]" : "pb-8"
+            }`}
+          >
+            <div className="flex items-center gap-4 mb-4">
               <button
                 onClick={() => setActiveTab("options")}
                 className="p-2 text-[var(--text-primary)]"
@@ -221,118 +281,30 @@ export const AddEntryDrawer = ({
                 />
               </div>
             </div>
-          )}
 
-          {activeTab === "water" && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setActiveTab("options")}
-                className="text-[var(--text-primary)]"
-              >
-                <ArrowLeft size={24} />
-              </button>
-              <h3 className="text-xl font-black uppercase tracking-tighter flex-1 text-center text-[var(--text-primary)]">
-                Mana Presets
-              </h3>
-            </div>
-          )}
-
-          {(activeTab === "exercise" ||
-            activeTab === "weight" ||
-            activeTab === "foodQuantity" ||
-            activeTab === "customFood") && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  if (activeTab === "foodQuantity") setActiveTab(returnTab);
-                  else if (activeTab === "exercise" && selectedActivity)
-                    setSelectedActivity(null);
-                  else setActiveTab("options");
-                }}
-                className="text-[var(--text-primary)]"
-              >
-                <ArrowLeft size={24} />
-              </button>
-              <h3 className="text-xl font-black uppercase tracking-tighter flex-1 text-center text-[var(--text-primary)]">
-                {activeTab === "exercise"
-                  ? selectedActivity
-                    ? `Logging ${selectedActivity}`
-                    : "Hero Training"
-                  : activeTab === "weight"
-                  ? "Hero Weight"
-                  : activeTab === "customFood"
-                  ? "Identify Fuel"
-                  : "Adjust Quantity"}
-              </h3>
-            </div>
-          )}
-        </div>
-
-        {/* 2. SCROLLABLE CONTENT: This area handles the keyboard resize */}
-        <div className="flex-1 overflow-y-auto px-8 pb-safe custom-scrollbar">
-          {activeTab === "options" && (
-            <div className="grid grid-cols-2 gap-4 pb-8">
-              <ActionButton
-                theme={theme}
-                icon={<Utensils size={32} />}
-                label="Food"
-                subLabel="Health Orb"
-                customColor="rgba(239, 68, 68, 0.2)"
-                iconColor="text-red-500"
-                onClick={() => setActiveTab("food")}
-              />
-              <ActionButton
-                theme={theme}
-                icon={<Droplets size={32} />}
-                label="Water"
-                subLabel="Mana Orb"
-                customColor="rgba(59, 130, 246, 0.2)"
-                iconColor="text-blue-500"
-                onClick={() => setActiveTab("water")}
-              />
-              <ActionButton
-                theme={theme}
-                icon={<Zap size={32} />}
-                label="Exercise"
-                subLabel="Stamina Bar"
-                customColor="rgba(234, 179, 8, 0.2)"
-                iconColor="text-yellow-500"
-                onClick={() => setActiveTab("exercise")}
-              />
-              <ActionButton
-                theme={theme}
-                icon={<Scale size={32} />}
-                label="Weight"
-                subLabel="Hero Stats"
-                customColor="rgba(34, 197, 94, 0.2)"
-                iconColor="text-green-500"
-                onClick={() => setActiveTab("weight")}
-              />
-            </div>
-          )}
-
-          {activeTab === "food" && (
-            <div className="space-y-3 pb-8">
-              {favorites.length > 0 && search === "" && (
-                <div className="mb-6">
-                  <p className="text-[10px] font-black opacity-40 uppercase mb-2 tracking-widest">
-                    Favorites
-                  </p>
-                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                    {favorites.map((food: FoodDefinition) => (
-                      <button
-                        key={food.id}
-                        onClick={() => handleFoodClick(food)}
-                        className="flex-shrink-0 px-4 py-2 bg-[var(--accent)]/10 border-2 border-[var(--accent)] rounded-xl text-[var(--accent)] font-black text-xs uppercase"
-                      >
-                        {food.name}
-                      </button>
-                    ))}
-                  </div>
+            {favorites.length > 0 && search === "" && (
+              <div className="mb-6">
+                <p className="text-[10px] font-black opacity-40 uppercase mb-2 tracking-widest">
+                  Favorites
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {favorites.map((food: FoodDefinition) => (
+                    <button
+                      key={food.id}
+                      onClick={() => handleFoodClick(food)}
+                      className="flex-shrink-0 px-4 py-2 bg-[var(--accent)]/10 border-2 border-[var(--accent)] rounded-xl text-[var(--accent)] font-black text-xs uppercase"
+                    >
+                      {food.name}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
+
+            <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
               {filteredFoods.map((food: FoodDefinition) => (
                 <div key={food.id} className="relative flex items-center group">
+                  {/* 1. MAIN FOOD BUTTON */}
                   <button
                     onClick={() => handleFoodClick(food)}
                     className="w-full flex justify-between items-center p-4 pr-24 bg-black/5 hover:bg-black/10 rounded-2xl border-2 border-transparent active:border-[var(--accent)] transition-all"
@@ -346,7 +318,10 @@ export const AddEntryDrawer = ({
                       </p>
                     </div>
                   </button>
+
+                  {/* 2. ICON ACTIONS CONTAINER (Pinned Right) */}
                   <div className="absolute right-2 flex items-center gap-1">
+                    {/* FAVORITE STAR */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -364,6 +339,7 @@ export const AddEntryDrawer = ({
                         }
                       />
                     </button>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -373,11 +349,18 @@ export const AddEntryDrawer = ({
                     >
                       <Pencil size={18} />
                     </button>
+
+                    {/* DELETE FROM LIBRARY X */}
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm(`Remove "${food.name}"?`))
+                        if (
+                          confirm(
+                            `Remove "${food.name}" from your permanent library?`
+                          )
+                        ) {
                           await deleteFoodFromLibrary(uid, food.id);
+                        }
                       }}
                       className="p-2 text-red-500 opacity-30 hover:opacity-100 transition-opacity"
                     >
@@ -386,232 +369,348 @@ export const AddEntryDrawer = ({
                   </div>
                 </div>
               ))}
-              {search && filteredFoods.length === 0 && (
+
+              {/* If search returns nothing, show the 'Register New' button */}
+              {filteredFoods.length === 0 && (
                 <button
                   onClick={() => {
                     setCustomFoodName(search);
                     setActiveTab("customFood");
                   }}
-                  className="w-full p-6 border-2 border-dashed border-black/10 rounded-2xl text-[var(--text-primary)] opacity-40 hover:opacity-100 font-black uppercase text-xs"
+                  className="w-full p-6 border-2 border-dashed ..."
                 >
                   + Register "{search}" as New Fuel
                 </button>
               )}
             </div>
-          )}
+          </div>
+        )}
+        {activeTab === "customFood" && (
+          <div className="space-y-4 animate-in slide-in-from-right">
+            <h3 className="text-lg font-black uppercase text-[var(--text-primary)]">
+              Identify Fuel
+            </h3>
 
-          {activeTab === "customFood" && (
-            <div className="space-y-4 pb-8">
-              <input
-                type="text"
-                placeholder="Name"
-                className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)] font-bold"
-                value={customFoodName}
-                onChange={(e) => setCustomFoodName(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black opacity-40 uppercase ml-2">
-                    Calories
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="KCAL"
-                    className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)] font-bold"
-                    value={customFoodKcal}
-                    onChange={(e) => setCustomFoodKcal(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-blue-500">
-                    Protein (g)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    className="w-full bg-blue-500/5 p-4 rounded-2xl border-2 border-blue-500/10 text-[var(--text-primary)] font-bold"
-                    value={protein}
-                    onChange={(e) => setProtein(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-orange-500">
-                    Carbs (g)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    className="w-full bg-orange-500/5 p-4 rounded-2xl border-2 border-orange-500/10 text-[var(--text-primary)] font-bold"
-                    value={carbs}
-                    onChange={(e) => setCarbs(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-yellow-600">
-                    Fat (g)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    className="w-full bg-yellow-500/5 p-4 rounded-2xl border-2 border-yellow-500/10 text-[var(--text-primary)] font-bold"
-                    value={fat}
-                    onChange={(e) => setFat(e.target.value)}
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20 cursor-pointer">
+            <input
+              type="text"
+              placeholder={`Name (e.g. "Turkey - 56g")`}
+              className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)]"
+              value={customFoodName}
+              onChange={(e) => setCustomFoodName(e.target.value)}
+            />
+
+            <input
+              type="number"
+              placeholder="KCAL"
+              className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)]"
+              value={customFoodKcal}
+              onChange={(e) => setCustomFoodKcal(e.target.value)}
+            />
+
+            {/* Nutrient Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2">
+                  Calories
+                </label>
                 <input
-                  type="checkbox"
-                  checked={isLiquidDefault}
-                  onChange={(e) => setIsLiquidDefault(e.target.checked)}
+                  type="number"
+                  placeholder="KCAL"
+                  className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)] font-bold"
+                  value={customFoodKcal}
+                  onChange={(e) => setCustomFoodKcal(e.target.value)}
                 />
-                <span className="text-xs font-bold text-blue-600 uppercase">
-                  Always count as hydration
-                </span>
-              </label>
-              <div className="flex flex-col gap-2 mt-2">
-                {editingFoodId ? (
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-blue-500">
+                  Protein (g)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  className="w-full bg-blue-500/5 p-4 rounded-2xl border-2 border-blue-500/10 text-[var(--text-primary)] font-bold"
+                  value={protein}
+                  onChange={(e) => setProtein(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-orange-500">
+                  Carbs (g)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  className="w-full bg-orange-500/5 p-4 rounded-2xl border-2 border-orange-500/10 text-[var(--text-primary)] font-bold"
+                  value={carbs}
+                  onChange={(e) => setCarbs(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-yellow-600">
+                  Fat (g)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  className="w-full bg-yellow-500/5 p-4 rounded-2xl border-2 border-yellow-500/10 text-[var(--text-primary)] font-bold"
+                  value={fat}
+                  onChange={(e) => setFat(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Is Hydration? */}
+            <label className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isLiquidDefault} // New state variable
+                onChange={(e) => setIsLiquidDefault(e.target.checked)}
+              />
+              <span className="text-xs font-bold text-blue-600 uppercase">
+                Always count as hydration
+              </span>
+            </label>
+
+            <div className="grid grid-cols-1 gap-2 mt-4">
+              {editingFoodId ? (
+                // Edit Mode View
+                <button
+                  onClick={() => handleSaveProcess("save")}
+                  className="py-4 px-4 rounded-xl bg-[var(--accent)] text-[var(--bg-main)] text-sm font-black uppercase shadow-lg active:scale-95 transition-all"
+                >
+                  Update Library Record
+                </button>
+              ) : (
+                // Standard Registration View
+                <>
+                  <button
+                    onClick={() => handleSaveProcess("log")}
+                    className="..."
+                  >
+                    Log One-Time
+                  </button>
                   <button
                     onClick={() => handleSaveProcess("save")}
-                    className="w-full py-4 bg-[var(--accent)] text-[var(--bg-main)] rounded-2xl font-black uppercase shadow-lg"
+                    className="..."
                   >
-                    Update Library Record
+                    Save to Library & Log
                   </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => handleSaveProcess("save")}
-                      className="w-full py-4 bg-[var(--accent)] text-[var(--bg-main)] rounded-2xl font-black uppercase shadow-lg"
-                    >
-                      Save to Library & Log
-                    </button>
-                    <button
-                      onClick={() => handleSaveProcess("log")}
-                      className="w-full py-3 border-2 border-black/10 text-[var(--text-primary)] rounded-xl font-black uppercase text-xs opacity-60"
-                    >
-                      Log One-Time
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    setEditingFoodId("");
-                    setActiveTab("food");
-                  }}
-                  className="py-2 text-[10px] font-black uppercase opacity-40"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+                  <button
+                    onClick={() => handleSaveProcess("favorite")}
+                    className="..."
+                  >
+                    ⭐ Favorite & Log
+                  </button>
+                </>
+              )}
 
-          {activeTab === "foodQuantity" && selectedFood && (
-            <div className="space-y-6 pb-8 text-center">
-              <div className="p-6 bg-black/5 rounded-[2rem] border-2 border-dashed border-black/10">
-                <h4 className="text-2xl font-black uppercase text-[var(--text-primary)]">
-                  {selectedFood.name}
-                </h4>
-                <p className="text-sm font-bold text-[var(--accent)]">
-                  {selectedFood.calories} KCAL BASE
-                </p>
-              </div>
-              <div className="flex justify-center items-end gap-4 py-4">
-                <button
-                  onClick={() =>
-                    setFoodQuantity(Math.max(0, foodQuantity - 0.5))
-                  }
-                  className="w-14 h-14 rounded-2xl bg-black/5 border-2 border-black/10 text-2xl font-black"
-                >
-                  -
-                </button>
-                <div className="flex flex-col items-center">
-                  <input
-                    type="number"
-                    step={0.1}
-                    value={foodQuantity}
-                    onChange={(e) =>
-                      setFoodQuantity(parseFloat(e.target.value) || 0)
-                    }
-                    className="bg-transparent text-5xl font-black text-center w-32 outline-none border-b-4 border-black/10 focus:border-[var(--accent)] text-[var(--text-primary)]"
-                  />
-                  <label className="text-[10px] font-black opacity-40 uppercase mt-2">
-                    Multiplier
-                  </label>
-                </div>
-                <button
-                  onClick={() => setFoodQuantity(foodQuantity + 0.5)}
-                  className="w-14 h-14 rounded-2xl bg-black/5 border-2 border-black/10 text-2xl font-black"
-                >
-                  +
-                </button>
-              </div>
-              <label className="flex items-center gap-3 p-4 bg-blue-500/5 rounded-2xl border-2 border-blue-500/20 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={countsAsHydration}
-                  onChange={(e) => setCountsAsHydration(e.target.checked)}
-                  className="w-5 h-5 accent-blue-500"
-                />
-                <span className="text-sm font-black text-blue-600 uppercase">
-                  Count as Mana?
-                </span>
-              </label>
+              {/* Cancel/Back button */}
               <button
-                onClick={() =>
-                  onAddFood(
-                    {
-                      ...selectedFood,
-                      multiplier: foodQuantity,
-                      totalCalories: Math.round(
-                        selectedFood.calories * foodQuantity
-                      ),
-                      protein: Math.round(
-                        (selectedFood.protein || 0) * foodQuantity
-                      ),
-                      carbs: Math.round(
-                        (selectedFood.carbs || 0) * foodQuantity
-                      ),
-                      fat: Math.round((selectedFood.fat || 0) * foodQuantity),
-                      timestamp: new Date().toISOString(),
-                    },
-                    countsAsHydration
-                  )
-                }
-                className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase shadow-lg"
+                onClick={() => {
+                  setEditingFoodId("");
+                  setActiveTab("food");
+                }}
+                className="py-2 text-[10px] font-black uppercase opacity-40 hover:opacity-100 transition-opacity"
               >
-                Consume {Math.round(selectedFood.calories * foodQuantity)} KCAL
+                Cancel and Return to Search
               </button>
             </div>
-          )}
+          </div>
+        )}
+        {activeTab === "foodQuantity" && selectedFood && (
+          <div className="space-y-6 animate-in slide-in-from-right duration-200">
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                // Ensure this goes back to the right place based on where they came from
+                onClick={() =>
+                  setActiveTab(returnTab || search ? "food" : "options")
+                }
+                className="p-2 text-[var(--text-primary)]"
+              >
+                <ArrowLeft size={24} />
+              </button>
+              <h3 className="text-xl font-black uppercase tracking-tighter flex-1 text-center text-[var(--text-primary)]">
+                Adjust Quantity
+              </h3>
+            </div>
 
-          {activeTab === "water" && <WaterTab onAdd={handleWaterClick} />}
+            {/* Food Info Card */}
+            <div className="text-center p-6 bg-black/5 rounded-[2rem] border-2 border-dashed border-black/10">
+              <p className="text-xs font-black opacity-40 uppercase tracking-widest mb-1">
+                Scaling Fuel
+              </p>
+              <h4 className="text-2xl font-black uppercase text-[var(--text-primary)] mb-1 leading-tight">
+                {selectedFood.name}
+              </h4>
+              <p className="text-sm font-bold text-[var(--accent)]">
+                {selectedFood.calories} KCAL BASE
+              </p>
+            </div>
 
-          {activeTab === "exercise" && (
-            <div className="pb-8">
-              {!selectedActivity ? (
-                <div className="grid grid-cols-3 gap-3">
-                  <ExerciseButton
-                    theme={theme}
-                    icon={<Footprints />}
-                    label="Walk"
-                    onClick={() => setSelectedActivity("Walk")}
-                  />
-                  <ExerciseButton
-                    theme={theme}
-                    icon={<Zap />}
-                    label="Cardio"
-                    onClick={() => setSelectedActivity("Cardio")}
-                  />
-                  <ExerciseButton
-                    theme={theme}
-                    icon={<Dumbbell />}
-                    label="Weights"
-                    onClick={() => setSelectedActivity("Weights")}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-6 text-center">
+            {/* Quantity Controls */}
+            <div className="flex justify-center items-end gap-4 py-6">
+              {/* Minus 0.5 Button */}
+              <button
+                onClick={() => setFoodQuantity(Math.max(0, foodQuantity - 0.5))}
+                className="w-14 h-14 rounded-2xl bg-black/5 border-2 border-black/10 flex items-center justify-center text-2xl font-black text-[var(--text-primary)] active:scale-90 transition-all pb-1"
+              >
+                -
+              </button>
+
+              {/* Styled Decimal Input */}
+              <div className="text-center flex flex-col items-center">
+                <input
+                  type="number"
+                  name="food-quantity"
+                  id="food-quantity"
+                  min={0}
+                  step={0.1}
+                  //Prevents mouse wheel from changing number while scrolling page
+                  onWheel={(e) => e.currentTarget.blur()}
+                  value={foodQuantity}
+                  onChange={(e) => {
+                    // Parse float to handle decimals, ensure it doesn't break on empty string
+                    const val = parseFloat(e.target.value);
+                    if (isNaN(val) || val < 0) {
+                      // Don't set to 0 immediately on empty string to allow typing,
+                      // but protect negative. You might want to handle empty string specifically if needed.
+                      // if (e.target.value === "") return;
+                      setFoodQuantity(0);
+                    } else {
+                      setFoodQuantity(val);
+                    }
+                  }}
+                  // TAILWIND STYLING HERE:
+                  className="bg-transparent text-5xl font-black text-center w-[140px] outline-none border-b-4 border-black/10 focus:border-[var(--accent)] text-[var(--text-primary)] transition-colors pb-1"
+                />
+                <label
+                  htmlFor="food-quantity"
+                  className="text-[10px] font-black opacity-40 uppercase tracking-tighter mt-2"
+                >
+                  Multiplier
+                </label>
+              </div>
+
+              {/* Plus 0.5 Button */}
+              <button
+                onClick={() => setFoodQuantity(foodQuantity + 0.5)}
+                className="w-14 h-14 rounded-2xl bg-black/5 border-2 border-black/10 flex items-center justify-center text-2xl font-black text-[var(--text-primary)] active:scale-90 transition-all pb-1"
+              >
+                +
+              </button>
+            </div>
+
+            <label className="flex items-center gap-3 p-4 bg-blue-500/5 rounded-2xl border-2 border-blue-500/20 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={countsAsHydration}
+                onChange={(e) => setCountsAsHydration(e.target.checked)}
+                className="w-5 h-5 accent-blue-500"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-black text-blue-600 uppercase">
+                  Liquid Fuel
+                </p>
+                <p className="text-[10px] font-bold opacity-60 uppercase">
+                  Count this as hydration?
+                </p>
+              </div>
+            </label>
+
+            {/* Final Consume Button */}
+            <button
+              onClick={() => {
+                // Ensure we don't log 0 or NaN quantity
+                const finalQuantity = foodQuantity || 1;
+
+                onAddFood(
+                  {
+                    ...selectedFood,
+                    id: `${selectedFood.id}-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .substring(2, 9)}`,
+                    timestamp: new Date().toISOString(),
+                    multiplier: foodQuantity,
+                    totalCalories: Math.round(
+                      selectedFood.calories * finalQuantity
+                    ),
+                    // Multiply the base macros by the quantity
+                    protein: Math.round(
+                      (selectedFood.protein || 0) * finalQuantity
+                    ),
+                    carbs: Math.round(
+                      (selectedFood.carbs || 0) * finalQuantity
+                    ),
+                    fat: Math.round((selectedFood.fat || 0) * finalQuantity),
+                  },
+                  countsAsHydration
+                );
+
+                if (countsAsHydration) {
+                  setActiveTab("water"); // Immediately pop up the water entry
+                } else {
+                  onClose();
+                }
+              }}
+              // Disable if quantity is effectively zero
+              disabled={!foodQuantity || foodQuantity <= 0}
+              className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase shadow-lg shadow-red-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Consume {Math.round(selectedFood.calories * (foodQuantity || 0))}{" "}
+              KCAL
+            </button>
+          </div>
+        )}
+        {activeTab === "water" && <WaterTab onAdd={handleWaterClick} />}
+        {activeTab === "exercise" && (
+          <div className="animate-in slide-in-from-right duration-200">
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() =>
+                  selectedActivity
+                    ? setSelectedActivity(null)
+                    : setActiveTab("options")
+                }
+                className="text-[var(--text-primary)]"
+              >
+                <ArrowLeft size={24} />
+              </button>
+              <h3 className="text-xl font-black uppercase tracking-tighter flex-1 text-center text-[var(--text-primary)]">
+                {selectedActivity
+                  ? `Logging ${selectedActivity}`
+                  : "Hero Training"}
+              </h3>
+            </div>
+
+            {!selectedActivity ? (
+              /* STEP 1: Choose Activity */
+              <div className="grid grid-cols-3 gap-3">
+                <ExerciseButton
+                  theme={theme}
+                  icon={<Footprints size={24} />}
+                  label="Walk"
+                  onClick={() => setSelectedActivity("Walk")}
+                />
+                <ExerciseButton
+                  theme={theme}
+                  icon={<Zap size={24} />}
+                  label="Cardio"
+                  onClick={() => setSelectedActivity("Cardio")}
+                />
+                <ExerciseButton
+                  theme={theme}
+                  icon={<Dumbbell size={24} />}
+                  label="Weights"
+                  onClick={() => setSelectedActivity("Weights")}
+                />
+              </div>
+            ) : (
+              /* STEP 2: Enter Duration */
+              <div className="space-y-6 py-4">
+                <div className="text-center">
+                  <p className="text-[var(--text-primary)] opacity-60 text-xs font-bold uppercase mb-2">
+                    Duration (Minutes)
+                  </p>
                   <input
                     type="number"
                     value={exerciseTime}
@@ -619,66 +718,78 @@ export const AddEntryDrawer = ({
                     className="text-5xl font-black bg-transparent text-center w-full outline-none text-[var(--accent)]"
                     autoFocus
                   />
-                  <button
-                    onClick={() => {
-                      onAddExercise(selectedActivity, Number(exerciseTime));
-                      onClose();
-                    }}
-                    className="w-full py-4 bg-[var(--accent)] text-[var(--bg-main)] font-black rounded-2xl shadow-lg"
-                  >
-                    CONFIRM TRAINING
-                  </button>
                 </div>
-              )}
-            </div>
-          )}
 
-          {activeTab === "weight" && (
-            <div className="space-y-6 pb-8 text-center">
-              <div className="bg-black/5 p-6 rounded-[2rem] border border-[var(--text-primary)]/10">
-                <div className="flex gap-4 items-end justify-center mb-6">
-                  <div className="flex flex-col">
-                    <input
-                      autoFocus
-                      type="number"
-                      value={weightValue}
-                      onChange={(e) => setWeightValue(e.target.value)}
-                      placeholder="0.0"
-                      className="bg-transparent text-5xl font-black text-center w-32 outline-none border-b-4 border-black/10 focus:border-green-500 text-[var(--text-primary)]"
-                    />
-                    <span className="text-[10px] font-black opacity-40 mt-2 uppercase">
-                      Weight
-                    </span>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setWeightUnit(weightUnit === "lbs" ? "kg" : "lbs")
-                    }
-                    className="bg-[var(--bg-main)] px-4 py-2 rounded-xl font-black text-sm border-2 border-[var(--text-primary)]/10 text-green-600"
-                  >
-                    {weightUnit}
-                  </button>
-                </div>
                 <button
-                  disabled={!weightValue}
                   onClick={() => {
-                    onAddWeight(parseFloat(weightValue), weightUnit);
+                    handleExerciseClick(selectedActivity, Number(exerciseTime));
                     onClose();
                   }}
-                  className="w-full py-4 bg-green-500 text-white rounded-2xl font-black uppercase"
+                  className="w-full py-4 bg-[var(--accent)] text-[var(--bg-main)] font-black rounded-2xl shadow-lg active:scale-95 transition-all"
                 >
-                  Record Progress
+                  CONFIRM TRAINING
                 </button>
               </div>
+            )}
+          </div>
+        )}
+        {activeTab === "weight" && (
+          <div className="space-y-6 animate-in slide-in-from-right duration-200">
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="p-4 bg-green-500 rounded-2xl text-white shadow-lg shadow-green-500/20 mb-2">
+                <Scale size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tighter text-[var(--text-primary)]">
+                Hero Weight
+              </h3>
             </div>
-          )}
-        </div>
+
+            <div className="bg-black/5 p-6 rounded-[2rem] border border-[var(--text-primary)]/10">
+              <div className="flex gap-4 items-end justify-center mb-6">
+                <div className="flex flex-col items-center">
+                  <input
+                    autoFocus
+                    type="number"
+                    value={weightValue}
+                    onChange={(e) => setWeightValue(e.target.value)}
+                    placeholder="0.0"
+                    className="bg-transparent text-5xl font-black text-center w-32 outline-none border-b-4 border-black/10 focus:border-green-500 text-[var(--text-primary)] transition-colors"
+                  />
+                  <span className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">
+                    Current Weight
+                  </span>
+                </div>
+
+                {/* Unit Toggle */}
+                <button
+                  onClick={() =>
+                    setWeightUnit(weightUnit === "lbs" ? "kg" : "lbs")
+                  }
+                  className="bg-[var(--bg-main)] px-4 py-2 rounded-xl font-black text-sm uppercase border-2 border-[var(--text-primary)]/10 text-green-600 active:scale-95"
+                >
+                  {weightUnit}
+                </button>
+              </div>
+
+              <button
+                disabled={!weightValue || parseFloat(weightValue) <= 0}
+                onClick={async () => {
+                  // This calls the prop we will add in App.tsx
+                  await onAddWeight(parseFloat(weightValue), weightUnit);
+                  onClose();
+                }}
+                className="w-full py-4 bg-green-500 text-white rounded-2xl font-black uppercase shadow-lg shadow-green-500/20 active:scale-95 transition-all disabled:opacity-30"
+              >
+                Record Progress
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// Sub-components
 const ActionButton = ({
   icon,
   label,
@@ -686,7 +797,7 @@ const ActionButton = ({
   onClick,
   customColor,
   iconColor,
-  theme,
+  theme, // Add theme prop
 }: {
   icon: React.ReactNode;
   label: string;
@@ -696,24 +807,30 @@ const ActionButton = ({
   iconColor: string;
   theme: string;
 }) => {
+  // If retro, we force the background to be neutral and the icon to be the text-primary color
   const isRetro = theme === "retro";
+
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-1 p-6 rounded-[2rem] border-2 transition-all active:scale-95 group relative overflow-hidden ${
-        isRetro
-          ? "bg-transparent border-[var(--text-primary)] shadow-[4px_4px_0px_var(--text-primary)]"
-          : "bg-black/5 border-transparent active:border-[var(--accent)]"
-      }`}
+      className={`flex flex-col items-center justify-center gap-1 p-6 rounded-[2rem] border-2 transition-all group relative overflow-hidden active:scale-95
+        ${
+          isRetro
+            ? "bg-transparent border-[var(--text-primary)] shadow-[4px_4px_0px_var(--text-primary)]"
+            : "bg-black/5 border-transparent active:border-[var(--accent)]"
+        }`}
     >
+      {/* Colored glow only for non-retro */}
       {!isRetro && (
         <div
           className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity"
           style={{ backgroundColor: customColor }}
         />
       )}
+
       <div
-        className={`p-4 rounded-2xl shadow-inner mb-2 z-10 ${
+        className={`p-4 rounded-2xl shadow-inner mb-2 z-10 transition-colors
+        ${
           isRetro
             ? "bg-black/10 text-[var(--text-primary)]"
             : `bg-[var(--bg-main)] ${iconColor}`
@@ -721,6 +838,7 @@ const ActionButton = ({
       >
         {icon}
       </div>
+
       <span className="text-xs font-black uppercase tracking-tighter text-[var(--text-primary)] z-10">
         {label}
       </span>
@@ -743,17 +861,25 @@ const ExerciseButton = ({
   theme: string;
 }) => {
   const isRetro = theme === "retro";
+
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-2 p-6 rounded-[2rem] border-2 transition-all active:scale-95 group relative overflow-hidden ${
-        isRetro
-          ? "bg-transparent border-[var(--text-primary)] shadow-[4px_4px_0px_var(--text-primary)]"
-          : "bg-black/5 border-transparent hover:border-yellow-500/50 shadow-lg"
-      }`}
+      className={`flex flex-col items-center justify-center gap-2 p-6 rounded-[2rem] border-2 transition-all active:scale-95 group relative overflow-hidden
+        ${
+          isRetro
+            ? "bg-transparent border-[var(--text-primary)] shadow-[4px_4px_0px_var(--text-primary)]"
+            : "bg-black/5 border-transparent hover:border-yellow-500/50 shadow-lg"
+        }`}
     >
+      {/* Yellow glow for Stamina - only in non-retro */}
+      {!isRetro && (
+        <div className="absolute inset-0 bg-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+
       <div
-        className={`p-4 rounded-2xl shadow-inner mb-1 z-10 ${
+        className={`p-4 rounded-2xl shadow-inner mb-1 z-10 transition-colors
+        ${
           isRetro
             ? "bg-black/10 text-[var(--text-primary)]"
             : "bg-[var(--bg-main)] text-yellow-600"
@@ -761,9 +887,12 @@ const ExerciseButton = ({
       >
         {icon}
       </div>
-      <p className="text-xs font-black uppercase tracking-tighter text-[var(--text-primary)] z-10">
-        {label}
-      </p>
+
+      <div className="text-center z-10">
+        <p className="text-xs font-black uppercase tracking-tighter text-[var(--text-primary)]">
+          {label}
+        </p>
+      </div>
     </button>
   );
 };
@@ -775,6 +904,7 @@ const WaterTab = ({
 }) => {
   const [customValue, setCustomValue] = useState("");
   const [unit, setUnit] = useState<WaterUnit>("oz");
+
   const presets = [
     { label: "Glass", oz: 8, ml: 250 },
     { label: "Large", oz: 12, ml: 350 },
@@ -783,16 +913,28 @@ const WaterTab = ({
     { label: "The Jug", oz: 32, ml: 1000 },
     { label: "The Tank", oz: 40, ml: 1200 },
   ];
+
   return (
-    <div className="space-y-4 pb-8">
+    <div className="space-y-4 animate-in slide-in-from-right duration-200">
+      {/* 1. COMPACT HEADER: Centralized Icon */}
+      <div className="flex flex-col items-center justify-center py-2">
+        <div className="p-3 bg-blue-500 rounded-2xl text-white shadow-lg shadow-blue-500/20 mb-1">
+          <Droplets size={24} />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest opacity-40 text-[var(--text-primary)]">
+          Hydration Presets
+        </p>
+      </div>
+
+      {/* 2. PRESET GRID: Space-optimized buttons */}
       <div className="grid grid-cols-2 gap-2">
         {presets.map((p) => (
           <button
             key={p.label}
             onClick={() => onAdd(unit === "oz" ? p.oz : p.ml, unit)}
-            className="flex flex-col items-center justify-center py-3 bg-blue-500/10 border-2 border-blue-500/10 rounded-xl active:scale-95 group hover:border-blue-500/50"
+            className="flex flex-col items-center justify-center py-3 bg-blue-500/10 border-2 border-blue-500/10 rounded-xl active:scale-95 transition-all group hover:border-blue-500/50"
           >
-            <p className="font-black text-xs uppercase text-[var(--text-primary)]">
+            <p className="font-black text-xs uppercase text-[var(--text-primary)] leading-none mb-1">
               {p.label}
             </p>
             <p className="text-[10px] font-bold opacity-50 uppercase text-[var(--text-primary)]">
@@ -801,26 +943,36 @@ const WaterTab = ({
           </button>
         ))}
       </div>
-      <div className="bg-black/5 p-4 rounded-3xl border border-[var(--text-primary)]/10 flex gap-2">
-        <input
-          type="number"
-          value={customValue}
-          onChange={(e) => setCustomValue(e.target.value)}
-          placeholder={`Enter ${unit}...`}
-          className="flex-1 bg-black/10 p-3 rounded-xl font-bold outline-none text-[var(--text-primary)]"
-        />
-        <button
-          onClick={() => setUnit(unit === "oz" ? "ml" : "oz")}
-          className="w-14 bg-[var(--bg-main)] text-[var(--text-primary)] rounded-xl font-black text-xs border-2 border-[var(--text-primary)]/10"
-        >
-          {unit}
-        </button>
+
+      {/* 3. CUSTOM INPUT */}
+      <div className="bg-black/5 p-4 rounded-3xl border border-[var(--text-primary)]/10">
+        <label className="text-[10px] font-black opacity-40 uppercase mb-2 block text-[var(--text-primary)]">
+          Custom Amount
+        </label>
+        <div className="flex gap-2 items-stretch">
+          <input
+            type="number"
+            value={customValue}
+            onChange={(e) => setCustomValue(e.target.value)}
+            placeholder={`Enter ${unit}...`}
+            className="min-w-0 flex-1 bg-black/10 p-3 rounded-xl font-bold outline-none border-2 border-transparent focus:border-blue-500 transition-all text-[var(--text-primary)]"
+          />
+          <button
+            onClick={() => setUnit(unit === "oz" ? "ml" : "oz")}
+            className="w-14 bg-[var(--bg-main)] text-[var(--text-primary)] rounded-xl font-black text-xs uppercase border-2 border-[var(--text-primary)]/10 active:scale-95 shrink-0"
+          >
+            {unit}
+          </button>
+        </div>
         <button
           disabled={!customValue}
-          onClick={() => onAdd(Number(customValue), unit)}
-          className="px-6 bg-blue-600 text-white rounded-xl font-black uppercase text-xs"
+          onClick={() => {
+            onAdd(Number(customValue), unit);
+            setCustomValue("");
+          }}
+          className="w-full mt-3 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-sm disabled:opacity-30 active:scale-[0.98] transition-all shadow-lg"
         >
-          Add
+          Add Custom
         </button>
       </div>
     </div>
