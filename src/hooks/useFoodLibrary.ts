@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import type { FoodEntry } from "../types";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
+import type { FoodDefinition } from "../types";
 
 export const useFoodLibrary = (uid: string) => {
-  const [foodLibrary, setFoodLibrary] = useState<FoodEntry[]>([]);
+  const [foodLibrary, setFoodLibrary] = useState<FoodDefinition[]>([]);
 
   useEffect(() => {
     // Listen to the entire foodLibrary collection for this user
@@ -16,7 +16,7 @@ export const useFoodLibrary = (uid: string) => {
           ({
             ...d.data(),
             id: d.id, // Ensure we use the Firestore document ID
-          } as FoodEntry)
+          } as FoodDefinition)
       );
       setFoodLibrary(docs);
     });

@@ -35,9 +35,8 @@ export const HomeView = ({ profile }: Props) => {
     (displayWater / (displayTargetWater || 1)) * 100,
     100
   );
-  const staminaPercent = Math.round(
-    Math.min((exerciseMinutes / 30) * 100, 100)
-  );
+  const staminaPercent = Math.round((exerciseMinutes / 30) * 100);
+  const isOverdrive = exerciseMinutes > 30;
 
   // Game Logic Flags
   const isNourished = caloriePercent >= 80;
@@ -116,23 +115,54 @@ export const HomeView = ({ profile }: Props) => {
           {/* Stamina Bar */}
           <div className="w-full max-w-[140px]">
             <div className="flex justify-between text-[10px] font-black uppercase opacity-60 mb-1 text-[var(--text-primary)]">
-              <span className="tracking-tighter">Stamina</span>
-              <span>{staminaPercent}%</span>
+              <span
+                className={`tracking-tighter ${
+                  isOverdrive ? "text-cyan-500 animate-pulse" : ""
+                }`}
+              >
+                {isOverdrive ? "OVERDRIVE" : "Stamina"}
+              </span>
+              <span className={isOverdrive ? "text-cyan-500" : ""}>
+                {/* Show the true percentage even if over 100 */}
+                {Math.round((exerciseMinutes / 30) * 100)}%
+              </span>
             </div>
-            <div className="h-6 bg-black/20 rounded-lg border-2 border-black/10 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)] overflow-hidden relative p-1">
+
+            {/* Single Main Container */}
+            <div
+              className={`h-6 bg-black/20 rounded-lg border-2 border-black/10 overflow-hidden relative p-1 transition-all duration-500
+    ${
+      isOverdrive
+        ? "shadow-[0_0_12px_rgba(34,211,238,0.6)] border-cyan-400/50"
+        : "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]"
+    }`}
+            >
+              {/* Layer 1: Base Yellow Bar (Always behind) */}
               <div
-                className="h-full bg-yellow-500 rounded-sm transition-all duration-1000 relative"
+                className="h-full bg-yellow-500 transition-all duration-1000 relative rounded-sm"
                 style={{
-                  width: `${staminaPercent}%`,
-                  backgroundImage:
-                    profile.settings.theme === "retro"
-                      ? "linear-gradient(90deg, transparent 85%, rgba(0,0,0,0.2) 85%)"
-                      : "none",
-                  backgroundSize: "12px 100%",
+                  width: `${Math.min((exerciseMinutes / 30) * 100, 100)}%`,
                 }}
               >
                 <div className="orb-shine absolute top-0 left-0 right-0 h-1/2 bg-white/25 rounded-t-sm" />
               </div>
+
+              {/* Layer 2: Cyan Overdrive Bar (Stacks on top) */}
+              {isOverdrive && (
+                <div
+                  className="absolute inset-1 bg-cyan-400 transition-all duration-1000 rounded-sm overflow-hidden animate-in fade-in zoom-in duration-500"
+                  style={{
+                    // Maps extra minutes to a 0-100% fill of the bar
+                    width: `calc(${Math.min(
+                      ((exerciseMinutes - 30) / 30) * 100,
+                      100
+                    )}% - 8px)`,
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                  <div className="orb-shine absolute top-0 left-0 right-0 h-1/2 bg-white/30 rounded-t-sm" />
+                </div>
+              )}
             </div>
           </div>
         </div>

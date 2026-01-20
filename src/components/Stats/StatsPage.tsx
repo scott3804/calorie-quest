@@ -3,8 +3,8 @@ import { GoalDonut } from "../Charts/GoalDonut"; //
 import type {
   WaterEntry,
   ExerciseEntry,
-  FoodEntry,
   PlayerProfile,
+  FoodLogEntry,
 } from "../../types";
 import { formatTimestamp, getLocalTodayString } from "../../utils/dateUtils";
 import { useState } from "react";
@@ -40,6 +40,15 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
   const displayTargetWater = isOz
     ? Math.round((profile.targetWater || 0) / 29.57)
     : profile.targetWater || 0;
+
+  const totals = foods.reduce(
+    (acc, f) => ({
+      p: acc.p + (f.protein || 0),
+      c: acc.c + (f.carbs || 0),
+      f: acc.f + (f.fat || 0),
+    }),
+    { p: 0, c: 0, f: 0 }
+  );
 
   return (
     <div className="p-6 pb-24 space-y-8 animate-in fade-in duration-500 bg-[var(--bg-main)]">
@@ -118,6 +127,35 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
             </div>
           </section>
 
+          <section className="flex gap-2 overflow-x-auto pb-2 no-scrollbar bg-black/5 rounded-[2rem] p-3 border-2 border-black/5">
+            <div className="grid grid-cols-3 gap-2 px-2 mt-2">
+              <div className="bg-blue-500/10 p-2 rounded-xl text-center">
+                <p className="text-[8px] font-black uppercase text-blue-500">
+                  Protein
+                </p>
+                <p className="text-sm font-black text-[var(--text-primary)]">
+                  {Math.round(totals.p)}g
+                </p>
+              </div>
+              <div className="bg-orange-500/10 p-2 rounded-xl text-center">
+                <p className="text-[8px] font-black uppercase text-orange-500">
+                  Carbs
+                </p>
+                <p className="text-sm font-black text-[var(--text-primary)]">
+                  {Math.round(totals.c)}g
+                </p>
+              </div>
+              <div className="bg-yellow-500/10 p-2 rounded-xl text-center">
+                <p className="text-[8px] font-black uppercase text-yellow-600">
+                  Fat
+                </p>
+                <p className="text-sm font-black text-[var(--text-primary)]">
+                  {Math.round(totals.f)}g
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* 1. FUEL SECTION (FOOD) */}
           <section className="bg-black/5 rounded-3xl p-6 border-2 border-black/5">
             <h3 className="text-sm font-black uppercase opacity-40 mb-4 tracking-widest text-[var(--text-primary)]">
@@ -129,7 +167,7 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
                   No health orbs consumed...
                 </p>
               )}
-              {foods.map((f: FoodEntry) => (
+              {foods.map((f: FoodLogEntry) => (
                 <div
                   key={f.id}
                   className="flex justify-between items-center bg-[var(--bg-card)] p-4 rounded-xl shadow-sm border border-black/5"
@@ -137,9 +175,22 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
                   <div>
                     <p className="font-black text-sm uppercase text-[var(--text-primary)]">
                       {f.name}
+                      {/* Show multiplier if it isn't exactly 1 */}
+                      {f.multiplier && f.multiplier !== 1 ? (
+                        <span className="text-[var(--accent)] ml-2 text-xs">
+                          x {f.multiplier}
+                        </span>
+                      ) : null}
                     </p>
-                    <p className="text-[10px] opacity-40 font-bold text-[var(--text-primary)]">
-                      {f.calories} KCAL • {formatTimestamp(f.timestamp)}
+                    <p className="text-[10px] opacity-40 font-bold text-[var(--text-primary)] uppercase tracking-tight">
+                      {f.totalCalories} KCAL
+                      {/* Show protein if available */}
+                      {f.protein
+                        ? ` • ${Math.round(
+                            f.protein * (f.multiplier || 1)
+                          )}G Protein`
+                        : ""}
+                      {` • ${formatTimestamp(f.timestamp)}`}
                     </p>
                   </div>
                   <button

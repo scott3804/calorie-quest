@@ -9,10 +9,11 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import {
-  type FoodEntry,
   type WaterEntry,
   type ExerciseEntry,
   type WaterUnit,
+  type FoodLogEntry,
+  type FoodDefinition,
 } from "../types";
 import { getLocalTodayString } from "./dateUtils";
 
@@ -37,7 +38,7 @@ export const updatePlayerProfile = async (
  * LOGS FOOD
  * Updates totalCalories and appends to the foods array.
  */
-export const logFoodToDb = async (userId: string, food: FoodEntry) => {
+export const logFoodToDb = async (userId: string, food: FoodLogEntry) => {
   const today = getLocalTodayString();
   const logRef = doc(db, `users/${userId}/dailyLogs`, today);
 
@@ -128,15 +129,18 @@ export const logWeightToDb = async (
  */
 export const saveCustomFoodDefinition = async (
   uid: string,
-  food: Omit<FoodEntry, "id" | "timestamp">
+  food: Omit<FoodDefinition, "id">
 ) => {
   const userRef = doc(db, "users", uid);
   const libraryRef = doc(collection(userRef, "foodLibrary"));
+  const id = libraryRef.id;
 
-  return await setDoc(libraryRef, {
+  await setDoc(libraryRef, {
     ...food,
-    id: libraryRef.id,
+    id,
   });
+
+  return { id };
 };
 
 export const updateFoodFavoriteStatus = async (
@@ -155,4 +159,16 @@ export const updateFoodFavoriteStatus = async (
 export const deleteFoodFromLibrary = async (uid: string, foodId: string) => {
   const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
   await deleteDoc(foodRef); // You'll need to import deleteDoc from firebase/firestore
+};
+
+/**
+ * UPDATES AN EXISTING FOOD DEFINITION
+ */
+export const updateFoodDefinition = async (
+  uid: string,
+  foodId: string,
+  updates: Partial<FoodDefinition>
+) => {
+  const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
+  return await updateDoc(foodRef, updates); //
 };

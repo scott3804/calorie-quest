@@ -14,7 +14,7 @@ import {
   logWaterToDb,
   logWeightToDb,
 } from "./utils/db";
-import type { FoodEntry, WaterUnit } from "./types";
+import type { FoodLogEntry, WaterUnit } from "./types";
 import { QuestView } from "./components/Quests/QuestsView";
 import { ShopView } from "./components/Shop/ShopView";
 
@@ -112,7 +112,10 @@ function App() {
     }
   };
 
-  const handleAddFood = async (food: FoodEntry, countsAsHydration: boolean) => {
+  const handleAddFood = async (
+    food: FoodLogEntry,
+    countsAsHydration: boolean
+  ) => {
     try {
       await logFoodToDb(profile.uid, food);
       if (!countsAsHydration) setIsAddOpen(false);

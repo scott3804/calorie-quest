@@ -83,13 +83,23 @@ export interface PlayerProfile {
   targetCalories: number;
   targetWater: number;
 }
-export interface FoodEntry {
+// The "Template" stored in your Food Library
+export interface FoodDefinition {
   id: string;
   name: string;
-  calories: number;
-  timestamp: string; // Changed from number to string
-  isFavorite?: boolean; // Added optional flag
-  isLiquid?: boolean; //Optional flag for a food to also count as hydration (Coffee, Tea, etc.)
+  calories: number; // Base kcal per serving
+  isLiquid: boolean;
+  isFavorite: boolean;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
+// The "Instance" stored in your Daily Log array
+export interface FoodLogEntry extends FoodDefinition {
+  timestamp: string;
+  multiplier: number; // Required: how many servings
+  totalCalories: number; // Required: result of calories * multiplier
 }
 
 export interface ExerciseEntry {
@@ -111,7 +121,7 @@ export interface DailyLog {
   totalWater: number;
   totalExerciseMinutes: number;
   isArchived: boolean;
-  foods?: FoodEntry[];
+  foods?: FoodLogEntry[];
   exercises?: ExerciseEntry[];
   waterEntries?: WaterEntry[];
   xpEarnedToday: {
