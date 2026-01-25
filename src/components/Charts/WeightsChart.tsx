@@ -9,31 +9,34 @@ interface Props {
 }
 
 export const WeightChart = ({ data, unit }: Props) => {
-  if (data.length < 2)
-    return (
-      <div className="h-48 flex items-center justify-center bg-black/5 rounded-3xl border-2 border-dashed border-black/10 opacity-40 italic text-xs">
-        More data needed for trend lines...
-      </div>
-    );
+  if (data.length < 2) return <div className="...">...</div>;
 
-  // 1. Convert data to preferred unit
   const isLbs = unit === "lbs";
+  // The Target Weight for the line
+  const targetWeightLbs = 215;
+  const targetWeight = isLbs ? targetWeightLbs : targetWeightLbs / 2.20462;
+
   const processedData = data.map((d) => ({
     ...d,
     displayWeight: isLbs ? d.weight * 2.20462 : d.weight,
   }));
 
-  // 2. Chart Math
-  const weights = processedData.map((d) => d.displayWeight);
-  const minWeight = Math.min(...weights) * 0.95; // 5% padding below
-  const maxWeight = Math.max(...weights) * 1.05; // 5% padding above
+  // Update math to include the targetWeight in the min/max range
+  const weights = [...processedData.map((d) => d.displayWeight), targetWeight];
+  const minWeight = Math.min(...weights) * 0.98;
+  const maxWeight = Math.max(...weights) * 1.02;
   const weightRange = maxWeight - minWeight;
 
   const width = 300;
   const height = 150;
   const padding = 20;
 
-  // 3. Map values to SVG coordinates
+  // Calculate the Y coordinate for the Goal Line
+  const targetY =
+    height -
+    ((targetWeight - minWeight) / weightRange) * (height - padding * 2) -
+    padding;
+
   const points = processedData
     .map((d, i) => {
       const x =
@@ -73,10 +76,32 @@ export const WeightChart = ({ data, unit }: Props) => {
           strokeOpacity="0.05"
         />
 
-        {/* The Line */}
+        {/* --- THE GOAL LINE --- */}
+        <line
+          x1={padding}
+          y1={targetY}
+          x2={width - padding}
+          y2={targetY}
+          stroke="var(--accent)"
+          strokeDasharray="4 2"
+          strokeWidth="1"
+          opacity="0.5"
+        />
+        <text
+          x={width - padding}
+          y={targetY - 4}
+          textAnchor="end"
+          fontSize="6"
+          fontWeight="black"
+          fill="var(--accent)"
+          className="uppercase"
+        >
+          Goal: {targetWeightLbs} {unit}
+        </text>
+
         <polyline
           fill="none"
-          stroke="#22c55e" // Green for Weight/Progress
+          stroke="#22c55e"
           strokeWidth="4"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -88,12 +113,12 @@ export const WeightChart = ({ data, unit }: Props) => {
           const [x, y] = points.split(" ")[i].split(",");
           return (
             <g key={i}>
-              <circle cx={x} cy={y} r="4" fill="#22c55e" />
+              <circle cx={x} cy={y} r="3" fill="#22c55e" />
               <text
                 x={x}
-                y={parseFloat(y) - 10}
+                y={parseFloat(y) - 8}
                 textAnchor="middle"
-                fontSize="8"
+                fontSize="7"
                 fontWeight="bold"
                 fill="currentColor"
                 opacity="0.6"

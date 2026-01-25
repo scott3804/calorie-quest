@@ -18,7 +18,7 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
   const today = getLocalTodayString();
   const { log, loading, deleteExercise, deleteWater, deleteFood } = useDailyLog(
     profile.uid,
-    today
+    today,
   );
   const [activeTab, setActiveTab] = useState<"today" | "trends">("today");
 
@@ -43,11 +43,11 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
 
   const totals = foods.reduce(
     (acc, f) => ({
-      p: acc.p + (f.protein || 0),
-      c: acc.c + (f.carbs || 0),
-      f: acc.f + (f.fat || 0),
+      p: acc.p + Number(f.protein || 0),
+      c: acc.c + Number(f.carbs || 0),
+      f: acc.f + Number(f.fat || 0),
     }),
-    { p: 0, c: 0, f: 0 }
+    { p: 0, c: 0, f: 0 },
   );
 
   return (
@@ -185,11 +185,7 @@ export const StatsPage = ({ profile }: StatsPageProps) => {
                     <p className="text-[10px] opacity-40 font-bold text-[var(--text-primary)] uppercase tracking-tight">
                       {f.totalCalories} KCAL
                       {/* Show protein if available */}
-                      {f.protein
-                        ? ` • ${Math.round(
-                            f.protein * (f.multiplier || 1)
-                          )}G Protein`
-                        : ""}
+                      {f.protein ? ` • ${Math.round(f.protein)}G Protein` : ""}
                       {` • ${formatTimestamp(f.timestamp)}`}
                     </p>
                   </div>

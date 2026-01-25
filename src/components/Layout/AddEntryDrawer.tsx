@@ -74,7 +74,7 @@ export const AddEntryDrawer = ({
 
   // State for the selected activity and duration
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
-  const [exerciseTime, setExerciseTime] = useState("30");
+  const [exerciseTime, setExerciseTime] = useState("10");
 
   // State for weight logging
   const [weightValue, setWeightValue] = useState("");
@@ -84,19 +84,28 @@ export const AddEntryDrawer = ({
   const { foodLibrary, favorites } = useFoodLibrary(uid);
 
   const filteredFoods = foodLibrary.filter((f: FoodDefinition) =>
-    f.name.toLowerCase().includes(search.toLowerCase())
+    f.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   useEffect(() => {
     if (!isOpen) {
       const timer = setTimeout(() => {
         setActiveTab("options");
-        setSearch("");
         setCustomFoodName("");
         setCustomFoodKcal("");
+        setProtein("");
+        setCarbs("");
+        setFat("");
+        setEditingFoodId("");
+        setIsLiquidDefault(false);
+        setCountsAsHydration(false);
+        setSearch("");
+        setReturnTab("food");
         setSelectedFood(null);
         setFoodQuantity(1);
         setSelectedActivity(null);
+        setExerciseTime("10");
+        setWeightValue("");
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -307,10 +316,11 @@ export const AddEntryDrawer = ({
                   {/* 1. MAIN FOOD BUTTON */}
                   <button
                     onClick={() => handleFoodClick(food)}
-                    className="w-full flex justify-between items-center p-4 pr-24 bg-black/5 hover:bg-black/10 rounded-2xl border-2 border-transparent active:border-[var(--accent)] transition-all"
+                    className="w-full flex justify-between items-center p-4 pr-32 bg-black/5 hover:bg-black/10 rounded-2xl border-2 border-transparent active:border-[var(--accent)] transition-all overflow-hidden"
                   >
-                    <div className="text-left">
-                      <p className="font-black text-sm uppercase text-[var(--text-primary)] leading-tight">
+                    <div className="text-left min-w-0 flex-1">
+                      {/* min-w-0 is required for truncate */}
+                      <p className="font-black text-sm uppercase text-[var(--text-primary)] leading-tight truncate">
                         {food.name}
                       </p>
                       <p className="text-[10px] opacity-40 font-black mt-0.5">
@@ -356,7 +366,7 @@ export const AddEntryDrawer = ({
                         e.stopPropagation();
                         if (
                           confirm(
-                            `Remove "${food.name}" from your permanent library?`
+                            `Remove "${food.name}" from your permanent library?`,
                           )
                         ) {
                           await deleteFoodFromLibrary(uid, food.id);
@@ -397,14 +407,7 @@ export const AddEntryDrawer = ({
               className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)]"
               value={customFoodName}
               onChange={(e) => setCustomFoodName(e.target.value)}
-            />
-
-            <input
-              type="number"
-              placeholder="KCAL"
-              className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)]"
-              value={customFoodKcal}
-              onChange={(e) => setCustomFoodKcal(e.target.value)}
+              enterKeyHint="next"
             />
 
             {/* Nutrient Grid */}
@@ -419,30 +422,7 @@ export const AddEntryDrawer = ({
                   className="w-full bg-black/5 p-4 rounded-2xl border-2 border-black/10 text-[var(--text-primary)] font-bold"
                   value={customFoodKcal}
                   onChange={(e) => setCustomFoodKcal(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-blue-500">
-                  Protein (g)
-                </label>
-                <input
-                  type="number"
-                  placeholder="Optional"
-                  className="w-full bg-blue-500/5 p-4 rounded-2xl border-2 border-blue-500/10 text-[var(--text-primary)] font-bold"
-                  value={protein}
-                  onChange={(e) => setProtein(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-orange-500">
-                  Carbs (g)
-                </label>
-                <input
-                  type="number"
-                  placeholder="Optional"
-                  className="w-full bg-orange-500/5 p-4 rounded-2xl border-2 border-orange-500/10 text-[var(--text-primary)] font-bold"
-                  value={carbs}
-                  onChange={(e) => setCarbs(e.target.value)}
+                  enterKeyHint="next"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -455,6 +435,32 @@ export const AddEntryDrawer = ({
                   className="w-full bg-yellow-500/5 p-4 rounded-2xl border-2 border-yellow-500/10 text-[var(--text-primary)] font-bold"
                   value={fat}
                   onChange={(e) => setFat(e.target.value)}
+                  enterKeyHint="next"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-orange-500">
+                  Carbs (g)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  className="w-full bg-orange-500/5 p-4 rounded-2xl border-2 border-orange-500/10 text-[var(--text-primary)] font-bold"
+                  value={carbs}
+                  onChange={(e) => setCarbs(e.target.value)}
+                  enterKeyHint="next"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-black opacity-40 uppercase ml-2 text-blue-500">
+                  Protein (g)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  className="w-full bg-blue-500/5 p-4 rounded-2xl border-2 border-blue-500/10 text-[var(--text-primary)] font-bold"
+                  value={protein}
+                  onChange={(e) => setProtein(e.target.value)}
                 />
               </div>
             </div>
@@ -632,18 +638,14 @@ export const AddEntryDrawer = ({
                     timestamp: new Date().toISOString(),
                     multiplier: foodQuantity,
                     totalCalories: Math.round(
-                      selectedFood.calories * finalQuantity
+                      selectedFood.calories * finalQuantity,
                     ),
                     // Multiply the base macros by the quantity
-                    protein: Math.round(
-                      (selectedFood.protein || 0) * finalQuantity
-                    ),
-                    carbs: Math.round(
-                      (selectedFood.carbs || 0) * finalQuantity
-                    ),
-                    fat: Math.round((selectedFood.fat || 0) * finalQuantity),
+                    protein: (selectedFood.protein || 0) * finalQuantity,
+                    carbs: (selectedFood.carbs || 0) * finalQuantity,
+                    fat: (selectedFood.fat || 0) * finalQuantity,
                   },
-                  countsAsHydration
+                  countsAsHydration,
                 );
 
                 if (countsAsHydration) {
