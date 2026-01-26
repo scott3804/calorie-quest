@@ -129,4 +129,5 @@ export interface DailyLog {
     water: number; // 0 to 800
     exercise: number; // 0 to 1200
   };
+  completedQuests?: string[];
 }

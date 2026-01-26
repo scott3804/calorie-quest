@@ -7,6 +7,7 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  runTransaction,
 } from "firebase/firestore";
 import {
   type WaterEntry,
@@ -23,7 +24,7 @@ import { getLocalTodayString } from "./dateUtils";
  */
 export const updatePlayerProfile = async (
   uid: string,
-  updates: Record<string, unknown>
+  updates: Record<string, unknown>,
 ) => {
   const userRef = doc(db, "users", uid);
   try {
@@ -43,7 +44,7 @@ export const logFoodToDb = async (userId: string, food: FoodLogEntry) => {
   const logRef = doc(db, `users/${userId}/dailyLogs`, today);
 
   await updateDoc(logRef, {
-    totalCalories: increment(food.calories),
+    totalCalories: increment(food.totalCalories),
     foods: arrayUnion(food),
   });
 };
@@ -55,7 +56,7 @@ export const logFoodToDb = async (userId: string, food: FoodLogEntry) => {
 export const logWaterToDb = async (
   userId: string,
   amount: number,
-  unit: WaterUnit
+  unit: WaterUnit,
 ) => {
   const today = getLocalTodayString();
   const logRef = doc(db, `users/${userId}/dailyLogs`, today);
@@ -82,7 +83,7 @@ export const logWaterToDb = async (
 export const logExerciseToDb = async (
   uid: string,
   name: string,
-  duration: number
+  duration: number,
 ) => {
   const today = getLocalTodayString();
   const logRef = doc(db, `users/${uid}/dailyLogs`, today);
@@ -107,7 +108,7 @@ export const logExerciseToDb = async (
 export const logWeightToDb = async (
   uid: string,
   weight: number,
-  unit: "lbs" | "kg"
+  unit: "lbs" | "kg",
 ) => {
   const userRef = doc(db, "users", uid);
 
@@ -129,7 +130,7 @@ export const logWeightToDb = async (
  */
 export const saveCustomFoodDefinition = async (
   uid: string,
-  food: Omit<FoodDefinition, "id">
+  food: Omit<FoodDefinition, "id">,
 ) => {
   const userRef = doc(db, "users", uid);
   const libraryRef = doc(collection(userRef, "foodLibrary"));
@@ -146,7 +147,7 @@ export const saveCustomFoodDefinition = async (
 export const updateFoodFavoriteStatus = async (
   uid: string,
   foodId: string,
-  isFavorite: boolean
+  isFavorite: boolean,
 ) => {
   const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
   return await updateDoc(foodRef, { isFavorite });
@@ -167,8 +168,43 @@ export const deleteFoodFromLibrary = async (uid: string, foodId: string) => {
 export const updateFoodDefinition = async (
   uid: string,
   foodId: string,
-  updates: Partial<FoodDefinition>
+  updates: Partial<FoodDefinition>,
 ) => {
   const foodRef = doc(db, "users", uid, "foodLibrary", foodId);
   return await updateDoc(foodRef, updates); //
+};
+
+export const claimQuestReward = async (
+  userId: string,
+  questId: string,
+  rewardAmount: number,
+) => {
+  const today = getLocalTodayString();
+  const logRef = doc(db, `users/${userId}/dailyLogs`, today);
+  const userRef = doc(db, "users", userId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const logSnap = await transaction.get(logRef);
+      const userSnap = await transaction.get(userRef);
+
+      if (!logSnap.exists() || !userSnap.exists()) {
+        throw "Missing essential log or profile records!";
+      }
+
+      const completedQuests = logSnap.data().completedQuests || [];
+
+      if (completedQuests.includes(questId)) {
+        throw "Bounty already claimed for today!";
+      }
+
+      // Update Gold balance and mark quest as claimed
+      transaction.update(userRef, { gold: increment(rewardAmount) });
+      transaction.update(logRef, { completedQuests: arrayUnion(questId) });
+    });
+    return { success: true };
+  } catch (e) {
+    console.error("Quest claim failed:", e);
+    return { success: false, error: e };
+  }
 };

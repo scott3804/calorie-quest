@@ -43,7 +43,10 @@ export const useDailyLog = (uid: string, date: string) => {
   const deleteFood = async (id: string) => {
     if (!log?.foods) return;
     const updated = log.foods.filter((f) => f.id !== id);
-    const newTotal = updated.reduce((sum, f) => sum + f.calories, 0);
+    const newTotal = updated.reduce(
+      (sum, f) => sum + (f.totalCalories || 0),
+      0,
+    );
 
     await updateDoc(logRef, {
       foods: updated,

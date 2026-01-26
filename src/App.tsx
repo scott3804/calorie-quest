@@ -30,7 +30,7 @@ function App() {
     if (profile?.settings?.theme) {
       document.documentElement.setAttribute(
         "data-theme",
-        profile.settings.theme
+        profile.settings.theme,
       );
     } else {
       document.documentElement.setAttribute("data-theme", "light");
@@ -114,7 +114,7 @@ function App() {
 
   const handleAddFood = async (
     food: FoodLogEntry,
-    countsAsHydration: boolean
+    countsAsHydration: boolean,
   ) => {
     try {
       await logFoodToDb(profile.uid, food);
@@ -153,7 +153,7 @@ function App() {
       <main className="flex-1 overflow-y-auto custom-scrollbar bg-transparent">
         {currentView === "home" && <HomeView profile={profile} />}
         {currentView === "stats" && <StatsPage profile={profile} />}
-        {currentView === "quest" && <QuestView />}
+        {currentView === "quest" && <QuestView profile={profile} />}
         {currentView === "shop" && <ShopView />}
       </main>
 
